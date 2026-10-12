@@ -1,0 +1,2175 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="military">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>KYIV OSINT RADAR v19.0 — Alpha-Beta</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<style>
+:root{--bg:#050a10;--panel:rgba(8,16,24,.92);--panel-solid:#0b1520;--text:#e8f0f5;--muted:#7a8f9e;--accent:#22d3ee;--accent-soft:rgba(34,211,238,.15);--danger:#ef4444;--ok:#34d399;--warn:#fbbf24;--border:rgba(34,211,238,.18);--header-bg:rgba(5,10,16,.94);--btn-bg:rgba(12,22,32,.9);--btn-border:rgba(148,163,184,.22);--glow:0 0 12px rgba(34,211,238,.35);--font:"SF Mono",ui-monospace,Menlo,Consolas,monospace;--font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);--card-h:0px}
+body.card-on{--card-h:132px}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;width:100%;overflow:hidden;font-family:var(--font-ui);background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent}
+#app{position:absolute;inset:0;display:flex;flex-direction:column}
+.header{min-height:42px;background:var(--header-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:6px 12px;padding-top:calc(6px + var(--safe-top));z-index:1000;backdrop-filter:blur(16px);flex:0 0 auto;font-size:12px;gap:8px}
+.logo{font-weight:800;letter-spacing:.06em;font-size:11px;display:flex;align-items:center;gap:7px;white-space:nowrap;font-family:var(--font)}
+.logo-icon{font-size:14px;filter:drop-shadow(0 0 6px var(--accent))}
+.header-right{display:flex;align-items:center;gap:8px;flex:1;justify-content:flex-end;min-width:0}
+.search-box{display:flex;align-items:center;background:var(--panel);border:1px solid var(--border);border-radius:999px;overflow:hidden;height:32px;flex:1;max-width:260px;min-width:100px}
+.search-box input{background:transparent;border:0;color:var(--text);padding:0 12px;font-size:12px;width:100%;outline:none}
+.search-box button{background:transparent;border:0;color:var(--accent);width:34px;height:32px;cursor:pointer;font-size:13px}
+.lang-btn-header{background:var(--btn-bg);border:1px solid var(--border);color:var(--accent);border-radius:999px;font-size:11px;cursor:pointer;font-weight:800;width:34px;height:32px;font-family:var(--font)}
+.status{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);font-weight:700;white-space:nowrap;font-family:var(--font)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.status-dot.err{background:var(--danger);box-shadow:0 0 10px var(--danger)}
+.status-dot.warn{background:var(--warn);box-shadow:0 0 10px var(--warn)}
+.ballistic-timer{display:none;padding:0 10px;height:32px;border-radius:999px;align-items:center;justify-content:center;font-family:var(--font);font-weight:900;font-size:12px;color:#fff;background:#7c2d12;border:2px solid #fca5a5;box-shadow:0 0 12px rgba(220,38,38,.7);min-width:66px}
+.ballistic-timer.show{display:inline-flex}
+.search-results{position:absolute;top:calc(48px + var(--safe-top));right:10px;left:10px;z-index:5000;background:var(--panel);border:1px solid var(--border);border-radius:12px;max-width:400px;margin-left:auto;max-height:260px;overflow-y:auto;width:280px;display:none;box-shadow:0 8px 24px rgba(0,0,0,.55)}
+.search-results.show{display:block}
+.search-item{padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid rgba(148,163,184,.12)}
+.search-item:hover{background:rgba(59,130,246,.18)}
+.search-item .name{font-weight:700}
+.search-item .addr{font-size:10px;color:var(--muted);margin-top:2px}
+#map{flex:1;min-height:0;width:100%;background:var(--bg)}
+.top-alert{position:absolute;top:calc(48px + var(--safe-top) + 8px);left:6px;right:6px;z-index:4600;border-radius:10px;overflow:hidden;display:none;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+.top-alert.show{display:block}
+.top-alert.ballistic{background:linear-gradient(90deg,#7f1d1d,#dc2626,#7f1d1d);color:#fff;border:1px solid #fca5a5}
+.top-alert.impact{background:linear-gradient(90deg,#7c2d12,#ea580c,#7c2d12);color:#fff;border:1px solid #fdba74}
+.top-alert-inner{padding:9px 34px 9px 12px;display:flex;align-items:center;gap:10px;font-weight:800;font-size:.86rem}
+.top-alert-icon{font-size:1.4rem}
+.top-alert-body{flex:1;min-width:0}
+.top-alert-title{font-weight:800;font-size:.86rem}
+.top-alert-place{font-size:.78rem;font-weight:700;margin-top:2px;opacity:.95}
+.top-alert-meta{font-size:.68rem;font-weight:700;opacity:.85;margin-top:2px}
+.top-alert-close{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.25);border:0;color:#fff;width:22px;height:22px;border-radius:50%;font-size:1rem;cursor:pointer}
+.hud-bottom{position:absolute;bottom:calc(10px + var(--safe-bottom) + var(--card-h));left:0;right:0;z-index:1200;padding:0 8px;pointer-events:none;transition:bottom .28s}
+.hud-bottom>*{pointer-events:auto}
+.btn-row{display:flex;gap:4px;overflow-x:auto;padding:5px 6px;background:var(--panel);border:1px solid var(--border);border-radius:999px;box-shadow:0 6px 20px rgba(0,0,0,.5);-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.btn-row::-webkit-scrollbar{display:none}
+.btn-row button{border-radius:999px;min-width:38px;height:38px;flex:0 0 38px;border-color:transparent;background:transparent}
+.btn-row button.on{background:var(--accent-soft);border-color:rgba(34,211,238,.5)}
+button{background:var(--btn-bg);border:1px solid var(--btn-border);color:var(--text);border-radius:12px;font-size:.95rem;cursor:pointer;font-weight:700;min-width:38px;height:38px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+button:active{background:var(--accent-soft)}
+button.danger{color:#fca5a5}
+button.on{border-color:var(--accent);box-shadow:var(--glow);background:var(--accent-soft)}
+button.siren-btn{color:var(--danger)}
+button.siren-btn.active{background:var(--danger)!important;color:#fff!important;border-color:var(--danger)}
+button.infra-btn.infrastructure{border-color:#3b82f6;color:#93c5fd}
+button.infra-btn.energy{border-color:var(--warn);color:var(--warn)}
+button.infra-btn.incidents{border-color:var(--danger);color:#fca5a5}
+button.sound-btn.muted{color:var(--danger)}
+button.sound-btn.on{color:var(--ok)}
+button.mass-btn.on{color:#c4b5fd;border-color:#a78bfa}
+button.fs-btn.on{background:rgba(99,102,241,.9);color:#fff}
+button.visual-btn.on{color:#facc15;border-color:#facc15}
+button.geo-btn.on{background:rgba(34,211,238,.9);color:#04202a;border-color:#22d3ee}
+.leaflet-popup-content-wrapper{background:var(--panel-solid);color:var(--text);border-radius:12px;border:1px solid var(--border)}
+.leaflet-popup-tip{background:rgba(7,16,24,.97)}
+.leaflet-popup-content{margin:9px 11px;font-size:.75rem;line-height:1.4;max-width:250px}
+.popup-title{font-weight:700;font-size:.82rem;margin-bottom:4px}
+.popup-meta{color:#94a3b8;font-size:.68rem}
+.popup-channels{margin-top:6px;padding-top:5px;border-top:1px solid rgba(148,163,184,.18);font-size:.66rem}
+.popup-channels .ch{display:inline-block;background:rgba(148,163,184,.2);color:#cbd5e1;padding:1px 6px;border-radius:8px;margin:2px 2px 2px 0;border:1px solid rgba(148,163,184,.3)}
+.popup-channels .ch.prio{background:rgba(251,191,36,.25);border-color:rgba(251,191,36,.5);color:#fbbf24}
+.popup-channels .ch.prio-l2{background:rgba(249,115,22,.28);border-color:rgba(251,146,60,.55);color:#fdba74}
+.popup-remove-btn{margin-top:8px;width:100%;height:30px;font-size:.75rem;background:rgba(220,38,38,.25);border:1px solid rgba(248,113,113,.5);color:#fca5a5;border-radius:6px;cursor:pointer;font-weight:800}
+.popup-toggle-btn{margin-top:6px;width:100%;height:30px;font-size:.75rem;background:rgba(34,211,238,.2);border:1px solid rgba(34,211,238,.5);color:#67e8f9;border-radius:6px;cursor:pointer;font-weight:800}
+.popup-speed{background:rgba(234,88,12,.3);color:#fdba74;padding:3px 6px;border-radius:5px;font-weight:700;font-size:.72rem;display:inline-block;margin-top:4px;border:1px solid rgba(253,186,116,.5)}
+.popup-alt{background:rgba(22,163,74,.25);color:#86efac;padding:3px 6px;border-radius:5px;font-weight:700;font-size:.68rem;display:inline-block;margin-top:4px;border:1px solid rgba(134,239,172,.4)}
+.popup-eta{background:rgba(220,38,38,.25);color:#fca5a5;padding:3px 6px;border-radius:5px;font-weight:700;font-size:.68rem;display:inline-block;margin-top:4px;border:1px solid rgba(248,113,113,.4)}
+.popup-trail{margin-top:6px;padding:6px 8px;border-radius:5px;background:rgba(148,163,184,.12);border:1px dashed rgba(148,163,184,.5);font-size:.68rem;color:#cbd5e1;max-height:150px;overflow-y:auto}
+.popup-trail .pt-title{font-weight:700;color:#e2e8f0;margin-bottom:3px}
+.popup-trail .pt-point{display:flex;gap:5px;justify-content:space-between;margin:1px 0}
+.popup-trail .pt-time{color:#94a3b8;font-size:.6rem}
+.popup-route{background:rgba(59,130,246,.2);color:#bfdbfe;padding:4px 8px;border-radius:5px;font-weight:700;font-size:.7rem;display:block;margin-top:4px;border:1px solid rgba(147,197,253,.4)}
+.threat-wrap{position:relative}
+.threat-rotate{position:absolute;inset:0;transform-origin:center center;display:flex;align-items:center;justify-content:center}
+.threat-icon{display:flex;align-items:center;justify-content:center;position:relative;line-height:0}
+@keyframes tpulse{0%,100%{filter:drop-shadow(0 0 3px rgba(220,38,38,.9));opacity:1}50%{filter:drop-shadow(0 0 12px rgba(220,38,38,1));opacity:.55}}
+@keyframes altDropPulse{0%,100%{filter:drop-shadow(0 0 4px #ef4444) drop-shadow(0 0 12px #dc2626);transform:scale(1);opacity:1}50%{filter:drop-shadow(0 0 14px #ef4444) drop-shadow(0 0 22px #b91c1c);transform:scale(1.18);opacity:.7}}
+.threat-icon.threat-pulse{animation:tpulse 1s ease-in-out infinite}
+.threat-icon.ballistic-alarm{animation:tpulse .5s ease-in-out infinite}
+.threat-icon.alt-drop-pulse{animation:altDropPulse .55s ease-in-out infinite}
+.threat-icon.alt-drop-pulse .uav-body{background:#ef4444!important;box-shadow:0 0 0 1.5px #fff inset,0 0 14px #ef4444!important}
+.threat-icon.priority-star::after{content:"⭐";position:absolute;top:-10px;left:-6px;font-size:11px;filter:drop-shadow(0 0 3px rgba(251,191,36,1))}
+.count-badge{position:absolute;right:-6px;top:-6px;height:14px;min-width:14px;padding:0 4px;border-radius:7px;background:#ea580c;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1px solid #fff;z-index:5}
+.confirm-badge{position:absolute;left:-6px;top:-6px;height:13px;min-width:13px;padding:0 3px;border-radius:7px;background:#16a34a;color:#fff;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;border:1px solid #fff;z-index:5}
+.impact-simple{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
+.err-banner{position:absolute;top:calc(36px + var(--safe-top));left:0;right:0;z-index:5000;background:#b91c1c;color:#fff;padding:8px 10px;font-size:.72rem;display:none}
+.err-banner.show{display:block}
+.err-banner .err-close{float:right;background:0;border:0;color:#fff;font-size:1.1rem;cursor:pointer;padding:0 4px}
+.toast{position:absolute;left:50%;top:calc(48px + var(--safe-top) + 12px);transform:translateX(-50%);z-index:2000;background:var(--panel-solid);color:var(--text);padding:9px 14px;border-radius:999px;border:1px solid var(--border);font-size:12px;font-weight:700;opacity:0;transition:opacity .25s;pointer-events:none;max-width:85vw;text-align:center}
+.toast.show{opacity:1}
+.leaflet-control-attribution{font-size:8px!important;background:var(--panel)!important;color:var(--muted)!important}
+.leaflet-control-zoom a{background:var(--btn-bg)!important;color:var(--text)!important;border:1px solid var(--border)!important;width:34px!important;height:34px!important;line-height:34px!important;font-size:16px!important;border-radius:10px!important}
+.leaflet-control-scale{background:rgba(7,16,24,.85)!important;border:1px solid rgba(34,211,238,.25)!important;border-radius:6px!important;padding:2px 6px!important;color:#e2e8f0!important}
+.settlement-marker{background:transparent;border:0}
+.settlement-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;border:1.5px solid #fff}
+.settlement-dot.city{background:#16a34a;width:11px;height:11px;border-width:2px}
+.infra-marker{background:transparent;border:0}
+.infra-bridge,.infra-energy,.infra-incident{width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.user-loc-marker{position:relative;width:22px;height:22px}
+.user-loc-dot{position:absolute;inset:0;border-radius:50%;background:#22d3ee;border:3px solid #fff;box-shadow:0 0 0 2px rgba(34,211,238,.6)}
+.tw-info-label{position:absolute;top:calc(100% + 11px);left:50%;transform:translateX(-50%);background:transparent;border:0;padding:0;white-space:nowrap;font-family:var(--font-ui);font-size:9px;font-weight:400;line-height:1.25;text-align:center;pointer-events:none;z-index:100}
+.tw-info-label *{color:#000;text-shadow:0 0 2px rgba(255,255,255,.95),0 0 4px rgba(255,255,255,.85),0 1px 1.5px rgba(0,0,0,.5),0 -1px 1.5px rgba(0,0,0,.4)}
+.tw-info-label .il-title{font-weight:600;font-size:10px;line-height:1.15}
+.tw-info-label .il-row{display:flex;gap:3px;justify-content:center;align-items:center;font-size:9px;line-height:1.15}
+.tw-info-label .il-row .sep{opacity:.4}
+.tw-info-label .il-spd{font-weight:500}
+.tw-info-label .il-spd-table{font-weight:400;font-style:italic}
+.tw-info-label .il-alt{font-weight:500}
+.tw-info-label .il-time{font-weight:400}
+.tw-info-label .il-eta{font-weight:500}
+.tw-info-label .il-alt-drop{font-weight:700;animation:ilDropPulse .9s ease-in-out infinite}
+@keyframes ilDropPulse{0%,100%{opacity:1}50%{opacity:.35}}
+.tw-id-badge-mini{position:absolute;top:-3px;right:-14px;background:transparent;color:#fff;font-size:10px;font-weight:800;line-height:1;padding:2px 5px;border-radius:8px;min-width:22px;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.95),0 0 4px rgba(0,0,0,.9),0 0 8px rgba(0,0,0,.75);font-family:var(--font);pointer-events:none;z-index:6}
+.bottom-card{position:absolute;bottom:0;left:0;right:0;z-index:1100;background:linear-gradient(180deg,rgba(8,16,24,.97),rgba(5,10,16,.99));border-top:1px solid var(--border);border-radius:18px 18px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.55);padding:6px 14px calc(12px + var(--safe-bottom));transform:translateY(100%);transition:transform .28s;display:none}
+.bottom-card.show{display:block;transform:translateY(0)}
+.bc-grabber{width:36px;height:3px;background:rgba(148,163,184,.35);border-radius:2px;margin:2px auto 8px}
+.bc-main{display:flex;align-items:center;gap:12px}
+.bc-dot{width:14px;height:14px;border-radius:50%;background:#f97316;flex-shrink:0;box-shadow:0 0 0 3px rgba(249,115,22,.18)}
+.bc-dot.crit{background:#dc2626;box-shadow:0 0 0 3px rgba(220,38,38,.25)}
+.bc-dot.warn{background:#f97316}
+.bc-dot.safe{background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.2)}
+.bc-text{font-size:15px;font-weight:800;line-height:1.15;flex:1;min-width:0}
+.bc-text b{color:#fca5a5}
+.bc-eta{text-align:right;flex-shrink:0}
+.bc-eta-num{font-size:24px;font-weight:900;color:#f97316;line-height:1}
+.bc-eta-num.crit{color:#dc2626}
+.bc-eta-unit{font-size:9px;font-weight:700;color:#f97316;text-transform:uppercase;margin-top:2px}
+.bc-eta-unit.crit{color:#dc2626}
+.bc-extra{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.15);font-size:11px;font-weight:700;font-family:var(--font);flex-wrap:wrap}
+.bc-extra .kv{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px}
+.bc-extra .kv.alt{background:rgba(22,163,74,.15);color:#86efac;border:1px solid rgba(134,239,172,.35)}
+.bc-extra .kv.alt.empty{background:rgba(148,163,184,.1);color:#7a8f9e;border:1px solid rgba(148,163,184,.25)}
+.bc-extra .kv.spd{background:rgba(234,88,12,.15);color:#fdba74;border:1px solid rgba(253,186,116,.4)}
+.bc-extra .kv.spd.empty{background:rgba(148,163,184,.1);color:#7a8f9e;border:1px solid rgba(148,163,184,.25)}
+.bc-extra .kv.dist{background:rgba(59,130,246,.15);color:#93c5fd;border:1px solid rgba(147,197,253,.35)}
+.bc-extra .kv.dist.empty{background:rgba(148,163,184,.1);color:#7a8f9e;border:1px solid rgba(148,163,184,.25)}
+.bc-extra .kv.time{background:rgba(168,85,247,.15);color:#c4b5fd;border:1px solid rgba(196,181,253,.35)}
+.bc-extra .kv.time.empty{background:rgba(148,163,184,.1);color:#7a8f9e;border:1px solid rgba(148,163,184,.25)}
+.bc-info{display:flex;gap:12px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(148,163,184,.12);font-size:11px;font-weight:700;color:var(--muted);font-family:var(--font);flex-wrap:wrap}
+.bc-info #bcInfoPlace{color:#86efac}
+.bc-info #bcInfoId{color:#fca5a5}
+.threat-icon.marker-active-pulse::before{content:"";position:absolute;top:50%;left:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid #FFD700;animation:markerRingPulse 1.5s ease-out infinite;pointer-events:none}
+@keyframes markerRingPulse{0%{transform:scale(.8);opacity:1}100%{transform:scale(2.4);opacity:0}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <div class="logo"><span class="logo-icon">🛰</span><span>KYIV OSINT RADAR</span></div>
+    <div class="header-right">
+      <div class="ballistic-timer" id="ballisticTimer"></div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Пошук місця..." autocomplete="off" spellcheck="false">
+        <button type="button" id="searchBtn">🔍</button>
+      </div>
+      <button type="button" class="lang-btn-header" id="btnLang">UA</button>
+      <div class="status"><span class="status-dot" id="statusDot"></span><span id="statusText">ONLINE</span></div>
+    </div>
+  </div>
+  <div class="search-results" id="searchResults"></div>
+  <div id="map"></div>
+
+  <div class="top-alert" id="topAlert">
+    <button class="top-alert-close" id="topAlertClose">×</button>
+    <div class="top-alert-inner">
+      <div class="top-alert-icon" id="topAlertIcon">🚨</div>
+      <div class="top-alert-body">
+        <div class="top-alert-title" id="topAlertTitle">—</div>
+        <div class="top-alert-place" id="topAlertPlace" style="display:none">—</div>
+        <div class="top-alert-meta" id="topAlertMeta" style="display:none">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="err-banner" id="errBanner">
+    <button class="err-close" onclick="this.parentNode.classList.remove('show')">×</button>
+    <b>Помилка:</b> <span id="errText">—</span>
+  </div>
+
+  <div class="hud-bottom">
+    <div class="btn-row">
+      <button type="button" id="btnRefresh" title="Оновити">↻</button>
+      <button type="button" id="btnQuickStatus" title="Статус">📊</button>
+      <button type="button" class="scope-btn on" id="btnScope">🌍</button>
+      <button type="button" class="geo-btn" id="btnGeo">🧭</button>
+      <button type="button" class="rings-btn" id="btnRingsToggle" title="Кільця 120/250 км">🎯</button>
+      <button type="button" class="settlements-btn" id="btnSettlements">🏘</button>
+      <button type="button" class="infra-btn" id="btnInfra">🏗</button>
+      <button type="button" class="power-btn" id="btnPower">⚡</button>
+      <button type="button" class="sound-btn on" id="soundToggle">🔔</button>
+      <button type="button" class="siren-btn" id="sirenBtn">🚨</button>
+      <button type="button" class="mass-btn" id="btnStratAvia" title="Стратегічна авіація">✈️</button>
+      <button type="button" class="map-toggle" id="btnMapToggle">🛰</button>
+      <button type="button" class="marker-btn" id="btnMarkers">📍</button>
+      <button type="button" class="visual-btn" id="btnVisual" title="Нижня панель">👁</button>
+      <button type="button" class="fs-btn" id="btnFullscreen">⛶</button>
+      <button type="button" id="btnClear" class="danger">✕</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<div class="bottom-card" id="bottomCard">
+  <div class="bc-grabber"></div>
+  <div class="bc-main">
+    <div class="bc-dot safe" id="bcDot"></div>
+    <div class="bc-text" id="bcText">Загроз не видно</div>
+    <div class="bc-eta">
+      <div class="bc-eta-num" id="bcEtaNum">—</div>
+      <div class="bc-eta-unit" id="bcEtaUnit">до міста</div>
+    </div>
+  </div>
+  <div class="bc-extra">
+    <span class="kv alt empty" id="bcAltChip"><span>▲</span><span id="bcAltVal">—</span></span>
+    <span class="kv spd empty" id="bcSpdChip"><span>⚡</span><span id="bcSpdVal">—</span></span>
+    <span class="kv dist empty" id="bcDistChip"><span>📏</span><span id="bcDistVal">—</span></span>
+    <span class="kv time empty" id="bcTimeChip"><span>🕐</span><span id="bcTimeVal">—</span></span>
+  </div>
+  <div class="bc-info" id="bcInfo">
+    <span class="bc-info-item" id="bcInfoPlace">📍 —</span>
+    <span class="bc-info-item" id="bcInfoId" style="display:none">🏷 #—</span>
+  </div>
+</div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+"use strict";
+
+/* ============ 1. LOG ============ */
+const Log = (() => {
+  function err(m) {
+    try { const b = document.getElementById("errBanner"), t = document.getElementById("errText");
+      if (b && t) { t.textContent = String(m || "?"); b.classList.add("show"); } } catch (e) {}
+    console.error("[radar]", m);
+  }
+  return { err };
+})();
+window.addEventListener("error", e => Log.err(e.message));
+
+/* ============ 2. UTILS ============ */
+const $ = id => document.getElementById(id);
+const esc = s => (s == null ? "" : String(s)).replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const norm = s => (s || "").toLowerCase().replace(/[’`´']/g, "'").replace(/[^\p{L}\p{N}\s'-]/gu, " ").replace(/\s+/g, " ").trim();
+
+function haversineKm(a, b, c, d) {
+  if (![a, b, c, d].every(Number.isFinite)) return NaN;
+  const R = 6371, toR = x => x * Math.PI / 180;
+  const dLat = toR(c - a), dLon = toR(d - b);
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a)) * Math.cos(toR(c)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(x));
+}
+function bearingBetween(lat1, lon1, lat2, lon2) {
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180, Δλ = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+function destPoint(lat, lon, brg, distKm) {
+  const R = 6371, br = brg * Math.PI / 180, lat1 = lat * Math.PI / 180, lon1 = lon * Math.PI / 180;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distKm / R) + Math.cos(lat1) * Math.sin(distKm / R) * Math.cos(br));
+  const lon2 = lon1 + Math.atan2(Math.sin(br) * Math.sin(distKm / R) * Math.cos(lat1), Math.cos(distKm / R) - Math.sin(lat1) * Math.sin(lat2));
+  return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
+}
+function distToKyiv(lat, lon) { return haversineKm(lat, lon, 50.45, 30.52); }
+function formatEta(m) {
+  if (m == null) return "—";
+  if (m < 0.5) return "<1 хв";
+  if (m < 60) return `~${Math.round(m)} хв`;
+  return `~${Math.floor(m / 60)} год`;
+}
+function formatAlt(a) { if (a == null) return "—"; return a >= 1000 ? (a / 1000).toFixed(1).replace(/\.0$/, "") + " км" : a + " м"; }
+function compassName(d) {
+  if (d == null) return "—";
+  const dirs = ["Пн","ПнСх","Сх","ПдСх","Пд","ПдЗх","Зх","ПнЗх"];
+  return dirs[Math.round(((d % 360) + 360) % 360 / 45) % 8];
+}
+function showToast(msg, ms = 1800) {
+  const t = $("toast"); if (!t) return;
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+/* ============================================================
+   ★★★ 3. TRACK FILTER (Alpha-Beta + Outlier Rejection) ★★★
+   ============================================================
+   Замінює старий stepToward/dwell/move/extra механізм.
+
+   Ідея:
+   - Кожен трек має 4 стани: lat, lon, vLat (град/год), vLon (град/год)
+   - Коли приходить нове вимірювання (НП з повідомлення):
+       1) Перевіряємо фізичну можливість (outlier rejection)
+       2) Робимо prediction на dt
+       3) Коригуємо позицію та швидкість через alpha/beta
+   - Між вимірюваннями — лише prediction (плавний рух)
+
+   Alpha: наскільки сильно тягнемо позицію до вимірювання (0.3–0.7)
+   Beta:  наскільки сильно коригуємо швидкість (0.05–0.2)
+   ============================================================ */
+class TrackFilter {
+  constructor(opts = {}) {
+    this.alpha = opts.alpha ?? 0.45;   // позиційна корекція
+    this.beta  = opts.beta  ?? 0.10;   // швидкісна корекція
+    this.speedMaxKmh = opts.speedMaxKmh ?? 2500; // фіз. обмеження (балістика)
+    this.reachBufferKm = opts.reachBufferKm ?? 8; // запас на похибку
+    this.speedDecayPerSec = opts.speedDecayPerSec ?? 0.0004; // затухання при простої
+
+    this.lat = null;
+    this.lon = null;
+    this.vLat = 0;   // градусів / годину
+    this.vLon = 0;
+    this.lastUpdateTs = 0;
+    this.lastMeasTs = 0;
+    this.initialized = false;
+    this.rejectedCount = 0;
+    this._lastPredictTs = 0;
+  }
+
+  /** Перша ініціалізація — без швидкості */
+  init(lat, lon) {
+    this.lat = lat;
+    this.lon = lon;
+    this.vLat = 0;
+    this.vLon = 0;
+    const now = Date.now();
+    this.lastUpdateTs = now;
+    this.lastMeasTs = now;
+    this._lastPredictTs = now;
+    this.initialized = true;
+  }
+
+  /** Prediction step: просунути позицію вперед за dt. Викликається щотика. */
+  predict() {
+    if (!this.initialized) return null;
+    const now = Date.now();
+    const dtH = (now - this._lastPredictTs) / 3600000;
+    if (dtH <= 0) return { lat: this.lat, lon: this.lon };
+
+    // Просуваємо позицію
+    this.lat += this.vLat * dtH;
+    this.lon += this.vLon * dtH;
+
+    // М'яке затухання швидкості, якщо давно не було вимірювань
+    const sinceMeasSec = (now - this.lastMeasTs) / 1000;
+    if (sinceMeasSec > 60) {
+      const decay = Math.pow(1 - this.speedDecayPerSec, sinceMeasSec);
+      this.vLat *= decay;
+      this.vLon *= decay;
+    }
+
+    this._lastPredictTs = now;
+    return { lat: this.lat, lon: this.lon };
+  }
+
+  /**
+   * Update step: згодувати нове вимірювання.
+   * @returns {{accepted:boolean, reason?:string, dist?:number, maxReach?:number}}
+   */
+  update(measLat, measLon, speedMaxOverride) {
+    if (!Number.isFinite(measLat) || !Number.isFinite(measLon)) {
+      return { accepted: false, reason: "bad-coords" };
+    }
+    if (!this.initialized) {
+      this.init(measLat, measLon);
+      return { accepted: true, reason: "init" };
+    }
+
+    const now = Date.now();
+    const dtH = Math.max((now - this.lastUpdateTs) / 3600000, 1 / 3600);
+
+    // 1. OUTLIER REJECTION — чи фізично можливо?
+    const dist = haversineKm(this.lat, this.lon, measLat, measLon);
+    const speedMax = speedMaxOverride || this.speedMaxKmh;
+    const maxReach = speedMax * dtH + this.reachBufferKm;
+    if (dist > maxReach) {
+      this.rejectedCount++;
+      return { accepted: false, reason: "too-far", dist, maxReach };
+    }
+
+    // 2. PREDICTION на dt до цього вимірювання
+    const predLat = this.lat + this.vLat * dtH;
+    const predLon = this.lon + this.vLon * dtH;
+
+    // 3. ALPHA-BETA UPDATE
+    const resLat = measLat - predLat;
+    const resLon = measLon - predLon;
+
+    this.lat = predLat + this.alpha * resLat;
+    this.lon = predLon + this.alpha * resLon;
+
+    this.vLat += (this.beta / dtH) * resLat;
+    this.vLon += (this.beta / dtH) * resLon;
+
+    // Обмеження швидкості за фізикою
+    const vMagDeg = Math.hypot(this.vLat, this.vLon);
+    const vMaxDeg = speedMax / 111.32; // ~км/год → град/год
+    if (vMagDeg > vMaxDeg) {
+      const k = vMaxDeg / vMagDeg;
+      this.vLat *= k;
+      this.vLon *= k;
+    }
+
+    this.lastUpdateTs = now;
+    this.lastMeasTs = now;
+    this._lastPredictTs = now;
+    return { accepted: true, reason: "ok", dist };
+  }
+
+  /** Швидкість у км/год */
+  speedKmh() {
+    const vDeg = Math.hypot(this.vLat, this.vLon);
+    return vDeg * 111.32;
+  }
+
+  /** Курс (heading) */
+  heading() {
+    if (Math.abs(this.vLat) < 1e-9 && Math.abs(this.vLon) < 1e-9) return null;
+    return bearingBetween(0, 0, this.vLat, this.vLon);
+  }
+
+  /** Позиція */
+  pos() { return { lat: this.lat, lon: this.lon }; }
+}
+
+/* ============ 3b. CONFIG ============ */
+const CFG = {
+  API_MESSAGES: "https://neptun.in.ua/api/v1/messages",
+  API_THREATS: "https://neptun.in.ua/api/v1/threats",
+  API_ALERTS: "https://neptun.in.ua/api/v1/alerts",
+  WS_URL: "wss://neptun.in.ua/api/v1/stream",
+  POLL_MS: 5000,
+  KYIV: [50.45, 30.52],
+  STALE_MS: 25*60*1000,
+  SOUND_ENABLED: true,
+  TILE_SAT: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  TILE_SAT_REF: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+  TILE_OSM: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  TILE_OMT: "https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}.png?key=5hFSPO5KgIEPvjTUfd7L"
+};
+
+/* ============ 4. GEO ============ */
+const SETTLEMENTS = [
+  ["Прип'ять",51.3947,30.0845,"c"],["Чорнобиль",51.2718,30.2244,"c"],
+  ["Біла Церква",49.8056,30.1093,"c"],["Сквира",49.7308,29.6640,"c"],
+  ["Тараща",49.5607,30.4954,"c"],["Тетіїв",49.3732,29.6784,"c"],
+  ["Узин",49.8202,30.4219,"c"],["Бориспіль",50.3612,30.9526,"c"],
+  ["Переяслав",50.0723,31.4532,"c"],["Яготин",50.2403,31.7916,"c"],
+  ["Баришівка",50.3576,31.3170,"s"],["Березань",50.3124,31.4775,"c"],
+  ["Бровари",50.5066,30.8010,"c"],["Буча",50.5515,30.2114,"c"],
+  ["Вишневе",50.3863,30.3658,"c"],["Ірпінь",50.5115,30.2387,"c"],
+  ["Гостомель",50.5788,30.2600,"s"],["Вишгород",50.5879,30.5018,"c"],
+  ["Славутич",51.5210,30.7593,"c"],["Богуслав",49.5465,30.8713,"c"],
+  ["Васильків",50.1844,30.3156,"c"],["Кагарлик",49.8643,30.8154,"c"],
+  ["Миронівка",49.6619,30.9813,"c"],["Обухів",50.1139,30.6246,"c"],
+  ["Ржищів",49.9702,31.0499,"c"],["Українка",50.1388,30.7369,"c"],
+  ["Боярка",50.3362,30.2834,"c"],["Фастів",50.0767,29.9234,"c"],
+  ["Київ",50.4501,30.5234,"c"],
+  ["Чернігів",51.5000,31.2900,"c"],["Ніжин",51.0500,31.8800,"s"],
+  ["Курск",51.7300,36.1900,"c"],["Брянск",53.2500,34.3700,"c"],
+  ["Белгород",50.6000,36.5900,"c"],["Воронеж",51.6700,39.1800,"c"],
+  ["Ростов-на-Дону",47.2400,39.7000,"c"],["Орел",52.9700,36.0600,"c"],
+  ["Семиполки",50.7192,30.9371,"s"],["Кіпті",51.0551,31.1530,"s"],
+  ["Козелець",50.9130,31.1170,"s"],["Димер",50.7900,30.3200,"s"],
+  ["Згурівка",50.4628,31.7744,"s"],["Осещина",50.6480,30.4870,"s"],
+  ["Остер",50.9507,30.8797,"s"],["Десна",50.9250,30.7800,"s"],
+  ["Любеч",51.3417,30.6500,"s"],["Ріпки",51.8064,31.0967,"s"],
+  ["Добрянка",52.0597,31.1856,"s"],["Городня",51.8931,31.5931,"s"],
+  ["Глобине",49.3889,33.2653,"c"],["Решетилівка",49.5636,34.0647,"c"],
+  ["Вознесенськ",47.5650,31.3333,"c"],["Полтава",49.5883,34.5514,"c"],
+  ["Миколаїв",46.9750,31.9946,"c"],["Кропивницький",48.5079,32.2623,"c"]
+];
+
+const BRIDGES = [
+  {id:"b1",name:"Автовокзальний шляхопровід",lat:50.421,lng:30.521,district:"Голосіївський"},
+  {id:"b9",name:"Гаванський міст",lat:50.468,lng:30.516,district:"Подільський"},
+  {id:"b11",name:"Дарницький міст",lat:50.421,lng:30.604,district:"Дніпровський"},
+  {id:"b21",name:"Міст Метро",lat:50.449,lng:30.573,district:"Дніпровський"},
+  {id:"b22",name:"Міст Патона",lat:50.421,lng:30.587,district:"Печерський"},
+  {id:"b36",name:"Подільський мостовий перехід",lat:50.475,lng:30.544,district:"Подільський"},
+  {id:"b48",name:"Північний міст",lat:50.493,lng:30.527,district:"Оболонський"},
+  {id:"b54",name:"Південний міст",lat:50.396,lng:30.582,district:"Дарницький"}
+];
+const ENERGY = [
+  {id:"e1",name:"Київська ТЕЦ-5",lat:50.393,lng:30.569,category:"CHP"},
+  {id:"e2",name:"Київська ТЕЦ-6",lat:50.532,lng:30.662,category:"CHP"},
+  {id:"e3",name:"Дарницька ТЕЦ",lat:50.447,lng:30.640,category:"CHP"},
+  {id:"e6",name:"Трипільська ТЕС",lat:50.163,lng:30.746,category:"thermal"},
+  {id:"e11",name:"Київська ГЕС",lat:50.584,lng:30.488,category:"HPP"},
+  {id:"e12",name:"Київська ГАЕС",lat:50.585,lng:30.490,category:"PSP"}
+];
+const SUBSTATIONS = [
+  ["ПС 750 «Київська»",50.4908,29.6888,"750"],
+  ["ПС 330 «Північна»",50.6131,30.3822,"330"],
+  ["ПС 330 «Новокиївська»",50.3800,30.4700,"330"],
+  ["ПС 330 «Нивки»",50.4760,30.4100,"330"],
+  ["ПС 330 «Броварська»",50.5380,30.8990,"330"],
+  ["ПС 110 «Пріорська»",50.5090,30.4240,"110"],
+  ["ПС 110 «Біличі»",50.4720,30.3300,"110"],
+  ["ПС 110 «Берковецька»",50.4950,30.3590,"110"],
+  ["ПС 110 «Московська»",50.4300,30.5200,"110"],
+  ["ПС 110 «Олімпійська»",50.4330,30.5200,"110"],
+  ["ПС 110 «Осокорки»",50.3950,30.6200,"110"],
+  ["ПС 110 «Соломенська»",50.4300,30.4800,"110"]
+];
+
+function findSettlement(text) {
+  if (!text) return null;
+  const low = norm(text);
+  if (!low) return null;
+  let best = null;
+  for (const s of SETTLEMENTS) {
+    const n = norm(s[0]);
+    if (n.length < 3) continue;
+    const idx = low.indexOf(n);
+    if (idx < 0) continue;
+    const before = idx > 0 ? low[idx-1] : " ", after = idx + n.length < low.length ? low[idx+n.length] : " ";
+    if (!(/[^а-яіїєґa-z0-9]/.test(before) || before === " ")) continue;
+    if (!(/[^а-яіїєґa-z0-9]/.test(after) || after === " ")) continue;
+    const score = n.length * 10 + (s[3] === "c" ? 2 : 1);
+    if (!best || score > best.score) best = { key: "s:"+n, name: s[0], lat: s[1], lon: s[2], index: idx, length: n.length, score };
+  }
+  return best;
+}
+
+/* ============ 5. TYPES ============ */
+const TYPE_META = {
+  uav:{label:"БПЛА"},recon:{label:"Розв"},
+  geran2:{label:"Герань-2"},geran3:{label:"Герань-3"},
+  geran4:{label:"Герань-4"},geran5:{label:"Герань-5"},
+  jet_drone:{label:"Реакт. БПЛА"},fpv:{label:"FPV"},
+  missile:{label:"КР"},ballistic:{label:"Бал"},
+  banderol:{label:"S8000"},kab:{label:"КАБ"},
+  umpb:{label:"УМПБ-5"},mig31k:{label:"МиГ-31К"},
+  strategic_aviation:{label:"Стратег"},zircon:{label:"Циркон"},
+  unknown:{label:"?"}
+};
+const getMeta = ty => TYPE_META[ty] || TYPE_META.unknown;
+
+const CLASSIFIER = (() => {
+  const RULES = [
+    {re:/циркон|zircon|3м22/i,type:"zircon",label:"Циркон",hard:true},
+    {re:/кінжал|кинжал/i,type:"ballistic",label:"Кинжал",hard:true},
+    {re:/іскандер|искандер/i,type:"ballistic",label:"Іскандер",hard:true},
+    {re:/кн-?23|kn-?23/i,type:"ballistic",label:"KN-23",hard:true},
+    {re:/балістік|баллистик/i,type:"ballistic",label:"Бал",hard:true},
+    {re:/реактивн[а-яіїєґ]*\s*(шахед|геран|бпла|дрон)|jet\s*drone/i,type:"jet_drone",label:"Реакт. БПЛА",hard:true,isJetDrone:true},
+    {re:/герань\s*-?\s*5|geran\s*-?\s*5/i,type:"geran5",label:"Герань-5",hard:true,isGeran5:true},
+    {re:/герань\s*-?\s*4|geran\s*-?\s*4/i,type:"geran4",label:"Герань-4",hard:true},
+    {re:/герань\s*-?\s*3|geran\s*-?\s*3/i,type:"geran3",label:"Герань-3",hard:true},
+    {re:/герань\s*-?\s*2|geran\s*-?\s*2/i,type:"geran2",label:"Герань-2",hard:true},
+    {re:/каб\b|kab\b|уаб\b/i,type:"kab",label:"КАБ",hard:true},
+    {re:/крилат[аиі]?\s+ракет|х-?\s*101|х-?\s*555|калібр|калибр|kalibr/i,type:"missile",label:"КР",hard:true},
+    {re:/миг-?31|міг-?31|mig-?31/i,type:"mig31k",label:"МиГ-31К",hard:true},
+    {re:/fpv|фпв/i,type:"fpv",label:"FPV"},
+    {re:/розвідник|разведчик|recon/i,type:"recon",label:"Розв"},
+    {re:/шахед|shahed|герань|geran|гербера|бпла|дрон|безпілотник/i,type:"uav",label:"БПЛА"}
+  ];
+  return function(text) {
+    text = text || "";
+    for (const r of RULES) if (r.re.test(text)) return { ...r, confidence: 0.85 };
+    return null;
+  };
+})();
+function detectExactName(text) {
+  if (!text) return null;
+  const tt = text.toLowerCase();
+  let m = tt.match(/герань\s*-?\s*([2-5])\b/); if (m) return `Герань-${m[1]}`;
+  m = tt.match(/(?:шахед|shahed)\s*-?\s*(\d{2,3})\b/); if (m) return `Шахед-${m[1]}`;
+  if (/реактивн/.test(tt) && /(шахед|геран|бпла|дрон)/.test(tt)) return "Реакт. БПЛА";
+  if (/іскандер|искандер/i.test(tt)) return "Іскандер";
+  if (/кинжал|кінжал/.test(tt)) return "Кинжал";
+  if (/циркон|zircon/.test(tt)) return "Циркон";
+  return null;
+}
+const KINEMATICS = {
+  uav:{speedCruise:170,altMin:50,altMax:500},
+  recon:{speedCruise:130,altMin:200,altMax:1500},
+  fpv:{speedCruise:90,altMin:10,altMax:120},
+  geran2:{speedCruise:175,altMin:50,altMax:250},
+  geran3:{speedCruise:185,altMin:50,altMax:280},
+  geran4:{speedCruise:195,altMin:50,altMax:300},
+  geran5:{speedCruise:210,altMin:50,altMax:350},
+  jet_drone:{speedCruise:750,altMin:100,altMax:800},
+  missile:{speedCruise:880,altMin:50,altMax:600},
+  ballistic:{speedCruise:2200,altMin:5000,altMax:50000},
+  zircon:{speedCruise:2800,altMin:1000,altMax:40000},
+  unknown:{speedCruise:160,altMin:50,altMax:500}
+};
+function kinematicsFor(type) { return KINEMATICS[type] || KINEMATICS.unknown; }
+function resolveSpeedKmh(type) {
+  if (type === "geran5") return 210;
+  if (type === "geran4") return 195;
+  if (type === "geran3") return 185;
+  if (type === "geran2") return 175;
+  return kinematicsFor(type).speedCruise;
+}
+function etaToKyivMin(lat, lon, type) {
+  if (lat == null || lon == null) return null;
+  const s = resolveSpeedKmh(type);
+  return s ? haversineKm(lat, lon, 50.45, 30.52) / s * 60 : null;
+}
+function _altFromMatch(numStr, unitStr) {
+  const v = parseFloat(String(numStr).replace(",", "."));
+  if (!Number.isFinite(v)) return null;
+  const unit = (unitStr || "").toLowerCase();
+  let meters;
+  if (unit === "км" || unit === "km") meters = v * 1000;
+  else if (unit === "м" || unit === "m") meters = v;
+  else meters = v <= 20 ? v * 1000 : v;
+  if (meters >= 40 && meters <= 25000) return Math.round(meters);
+  return null;
+}
+function parseAltitude(t) {
+  if (t == null) return null;
+  if (typeof t === "number" && Number.isFinite(t)) return Math.round(t);
+  if (typeof t.altitude === "number") return Math.round(t.altitude);
+  if (typeof t.alt === "number") return Math.round(t.alt);
+  if (typeof t.height === "number") return Math.round(t.height);
+  const text = [typeof t === "string" ? t : "", t.title, t.explanationShort, t.text, t.message]
+    .filter(Boolean).join(" ");
+  if (!text) return null;
+
+  let m = text.match(/(?:висот[аиоюеі]?|высот[аеыоую]?|altitude|height|\balt\b|\bh\b|[нhНH])\s*[:=]?\s*~?\s*(\d+(?:[.,]\d+)?)\s*(км|km|м|m)?\b/i);
+  if (m) { const a = _altFromMatch(m[1], m[2]); if (a != null) return a; }
+
+  m = text.match(/на\s+висот[іiе]\s*~?\s*(\d+(?:[.,]\d+)?)\s*(км|km|м|m)?\b/i);
+  if (m) { const a = _altFromMatch(m[1], m[2]); if (a != null) return a; }
+
+  m = text.match(/[↑▲]\s*~?\s*(\d+(?:[.,]\d+)?)\s*(км|km|м|m)?\b/i);
+  if (m) { const a = _altFromMatch(m[1], m[2]); if (a != null) return a; }
+
+  m = text.match(/(?:висот|высот|alt|h\s*[:=]|[нh]\s*[:=]|↑|▲)[^\d]{0,16}(\d+(?:[.,]\d+)?)\s*(км|km|м|m)\b/i);
+  if (m) { const a = _altFromMatch(m[1], m[2]); if (a != null) return a; }
+
+  m = text.match(/\b(\d+(?:[.,]\d+)?)\s*(км|km|м|m)\b/i);
+  if (m) {
+    const a = _altFromMatch(m[1], m[2]);
+    if (a != null) {
+      const unit = (m[2] || "").toLowerCase();
+      if (unit === "км" || unit === "km") {
+        if (a <= 15000) return a;
+      } else if (a >= 80 && a <= 12000) return a;
+    }
+  }
+
+  m = text.match(/(?:висот[аиоюеі]?|высот[аеыоую]?|altitude|\balt\b)[^\d]{0,16}(\d{3,5})\b/i);
+  if (m) {
+    const v = parseInt(m[1], 10);
+    if (v >= 50 && v <= 20000) return v;
+  }
+  return null;
+}
+
+/* ============ CHANNELS ============ */
+const PRIORITY_1 = new Set(["chyste_nebo", "kyiv_monitor1", "kyiv_airdef"]);
+const PRIORITY_2 = new Set(["ukrainemonitorzagroz", "ukraine_ua_24_7", "ukraineradar_24_7", "ukraineradar", "kpszsu"]);
+const PRIORITY_CHANNELS = new Set([...PRIORITY_1, ...PRIORITY_2]);
+function normalizeChannel(ch) {
+  if (!ch) return "unknown";
+  let k = String(ch).trim().replace(/^@/, "");
+  k = k.replace(/^https?:\/\/(?:t\.me|telegram\.me)\//i, "").replace(/\/+$/, "");
+  k = k.toLowerCase().replace(/\s+/g, "_").replace(/_bot$/, "").replace(/_channel$/, "");
+  return k || "unknown";
+}
+function isPriorityChannel(ch) {
+  const k = normalizeChannel(ch);
+  if (PRIORITY_CHANNELS.has(k)) return true;
+  for (const p of PRIORITY_CHANNELS) if (k.includes(p)) return true;
+  return false;
+}
+
+/* ============ 6. STATE ============ */
+const State = {
+  tracks: new Map(),         // API треки
+  msgMarkers: new Map(),     // статичні мітки (пуски)
+  impactReports: new Map(),
+  trails: new Map(),         // текстові треки (chains)
+  dismissed: new Map(),
+  lastActive: null,
+  trackIds: (() => { let next = 1; return () => next++; })()
+};
+
+/* ============ 7. MAP ============ */
+let map = null;
+let baseSat = null, osmLayer = null, omtLayer = null;
+let threatLayer = null, msgLayer = null, impactLayer = null, alertLayer = null;
+let infraLayer = null, powerLayer = null, settlementsLayer = null, coneLayer = null, trailLayer = null;
+let currentBase = "sat", infraMode = 0;
+let ringsVisible = false, settlementsVisible = false, powerVisible = false;
+
+function initMap() {
+  map = L.map("map", { center: [50.45, 30.52], zoom: 6, zoomControl: false });
+  L.control.zoom({ position: "bottomright" }).addTo(map);
+  L.control.scale({ position: "bottomleft", metric: true }).addTo(map);
+  baseSat = L.layerGroup();
+  L.tileLayer(CFG.TILE_SAT, { maxZoom: 19 }).addTo(baseSat);
+  L.tileLayer(CFG.TILE_SAT_REF, { maxZoom: 19, opacity: .9 }).addTo(baseSat);
+  baseSat.addTo(map);
+  osmLayer = L.tileLayer(CFG.TILE_OSM, { maxZoom: 19 });
+  omtLayer = L.tileLayer(CFG.TILE_OMT, { maxZoom: 19 });
+  threatLayer = L.layerGroup().addTo(map);
+  msgLayer = L.layerGroup().addTo(map);
+  impactLayer = L.layerGroup().addTo(map);
+  alertLayer = L.layerGroup().addTo(map);
+  settlementsLayer = L.layerGroup();
+  infraLayer = L.layerGroup();
+  powerLayer = L.layerGroup();
+  coneLayer = L.layerGroup().addTo(map);
+  trailLayer = L.layerGroup().addTo(map);
+  map.on("zoomend", () => { if (settlementsVisible) drawSettlements(); });
+}
+
+/* ============ 8. ICONS ============ */
+function rocketSvg(c) { return `<svg viewBox="0 0 24 40"><path d="M12 1 C14 1 16 6 16 12 L16 26 L19 32 L16 30 L16 34 L12 38 L8 34 L8 30 L5 32 L8 26 L8 12 C8 6 10 1 12 1 Z" fill="${c||"#dc2626"}" /></svg>`; }
+function buildGlyph(cls) {
+  const t = cls.type;
+  const isMissile = ["ballistic","zircon","missile","banderol","kab","umpb"].includes(t);
+  if (isMissile) {
+    const c = t === "zircon" ? "#a855f7" : "#dc2626";
+    const h = 26, w = Math.round(h * 24 / 40);
+    return `<div style="width:${w}px;height:${h}px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">${rocketSvg(c).replace("<svg ", `<svg width="${w}" height="${h}" `)}</div>`;
+  }
+  if (t === "recon") return `<div style="width:22px;height:22px;border-radius:50%;background:#3b82f6;border:2.5px solid #000;box-shadow:0 0 0 1.5px #fff inset,0 2px 5px rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 16 16"><path fill="#000" stroke="#fff" stroke-width="0.8" d="M8 1.2 L14.2 13.8 L8 11.2 L1.8 13.8 Z"/></svg></div>`;
+  if (t === "fpv") return `<div style="width:22px;height:22px;border-radius:50%;background:#a3e635;border:2.5px solid #000;box-shadow:0 0 0 1.5px #fff inset;display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 16 16"><path fill="#000" stroke="#fff" stroke-width="0.8" d="M8 1.2 L14.2 13.8 L8 11.2 L1.8 13.8 Z"/></svg></div>`;
+  return `<div class="uav-body" style="width:22px;height:22px;border-radius:50%;background:#FFD500;border:2.5px solid #000;box-shadow:0 0 0 1.5px #fff inset,0 2px 5px rgba(0,0,0,.7),0 0 10px rgba(255,213,0,.9);display:flex;align-items:center;justify-content:center;"><svg width="12" height="12" viewBox="0 0 16 16"><path fill="#000" stroke="#fff" stroke-width="0.8" d="M8 1.2 L14.2 13.8 L8 11.2 L1.8 13.8 Z"/></svg></div>`;
+}
+function buildInfoLabel(cls, speedKmh, etaMin) {
+  const title = (cls._exactName || getMeta(cls.type).label).toUpperCase();
+  const id = cls._trackId;
+  const p1 = [];
+  if (cls._speedReal && speedKmh > 30) p1.push(`<span class="il-spd">${Math.round(speedKmh)}</span>`);
+  else if (speedKmh > 30) p1.push(`<span class="il-spd-table">~${Math.round(speedKmh)}</span>`);
+  if (cls._altitude != null) {
+    if (cls._altDropping) p1.push(`<span class="il-alt-drop">▼${formatAlt(cls._altitude)}</span>`);
+    else p1.push(`<span class="il-alt">▲${formatAlt(cls._altitude)}</span>`);
+  }
+  const p2 = [];
+  if (cls._labelTime) p2.push(`<span class="il-time">${new Date(cls._labelTime).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>`);
+  if (etaMin != null) p2.push(`<span class="il-eta">~${Math.round(etaMin)} хв</span>`);
+  let html = `<div class="tw-info-label"><div class="il-title">${esc(title)}${id ? " #" + id : ""}</div>`;
+  if (p1.length) html += `<div class="il-row">${p1.join('<span class="sep">·</span>')}</div>`;
+  if (p2.length) html += `<div class="il-row">${p2.join('<span class="sep">·</span>')}</div>`;
+  return html + `</div>`;
+}
+function buildIcon(cls, heading, confirmN, hasPriority, isActive, speedKmh) {
+  const rot = heading != null ? heading : 0;
+  const isMissile = ["ballistic","zircon","missile","banderol","kab","umpb"].includes(cls.type);
+  const boxSize = isMissile ? 44 : 38;
+  const classes = ["threat-icon"];
+  if (isMissile && cls._stage === "threat") classes.push("threat-pulse");
+  if (cls._altDropping && (!cls._altDropUntil || Date.now() < cls._altDropUntil)) {
+    classes.push("alt-drop-pulse");
+  }
+  if (hasPriority) classes.push("priority-star");
+  if (isActive) classes.push("marker-active-pulse");
+  const confirmHtml = confirmN >= 1 ? `<div class="confirm-badge">${confirmN}</div>` : "";
+  const countHtml = cls._count ? `<div class="count-badge">${cls._count}</div>` : "";
+  const glyph = buildGlyph(cls);
+  const labelHtml = isActive ? buildInfoLabel(cls, speedKmh, cls._etaMin) : "";
+  const idHtml = (!isActive && cls._trackId) ? `<div class="tw-id-badge-mini">#${cls._trackId}</div>` : "";
+  return L.divIcon({
+    className: "",
+    html: `<div class="threat-wrap" style="width:${boxSize}px;height:${boxSize}px;">
+      <div class="threat-rotate" style="transform:rotate(${rot}deg);"><div class="${classes.join(" ")}">${glyph}</div></div>
+      ${confirmHtml}${countHtml}${labelHtml}${idHtml}
+    </div>`,
+    iconSize: [boxSize, boxSize],
+    iconAnchor: [boxSize/2, boxSize/2],
+    popupAnchor: [0, -boxSize/2]
+  });
+}
+function buildImpactIcon(kind) {
+  const e = { down:"🛬", shot:"🛡", fire:"🔥", hit:"💥" }[kind] || "💥";
+  const pulse = (kind === "hit" || kind === "fire") ? "threat-pulse" : "";
+  return L.divIcon({
+    className: "",
+    html: `<div class="impact-simple ${pulse}" style="font-size:28px;filter:drop-shadow(0 0 6px rgba(220,38,38,.85));line-height:1">${e}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+  });
+}
+function parseCoords(text) {
+  if (!text) return null;
+  let m = text.match(/(\d{2}[.,]\d{2,6})\s*[,;\s]\s*(\d{2}[.,]\d{2,6})/);
+  if (!m) return null;
+  const lat = parseFloat(m[1].replace(",", "."));
+  const lon = parseFloat(m[2].replace(",", "."));
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < 44 || lat > 53 || lon < 22 || lon > 41) return null;
+  return { lat, lon };
+}
+function resolveImpactPlace(text) {
+  const coords = parseCoords(text);
+  if (coords) {
+    const low = norm(text);
+    for (const e of ENERGY) {
+      if (low.includes(norm(e.name)) || low.includes(norm(e.name.replace(/київська\s*/i, "")))) {
+        return { key: "e:" + e.id, name: e.name, lat: coords.lat, lon: coords.lon, fromCoords: true };
+      }
+    }
+    return { key: "c:" + coords.lat.toFixed(3) + "," + coords.lon.toFixed(3), name: coords.lat.toFixed(3) + ", " + coords.lon.toFixed(3), lat: coords.lat, lon: coords.lon, fromCoords: true };
+  }
+  const low = norm(text);
+  for (const e of ENERGY) {
+    const n = norm(e.name);
+    if (n.length >= 4 && low.includes(n)) return { key: "e:" + e.id, name: e.name, lat: e.lat, lon: e.lng };
+    const short = n.replace(/київська\s*/i, "").trim();
+    if (short.length >= 4 && low.includes(short)) return { key: "e:" + e.id, name: e.name, lat: e.lat, lon: e.lng };
+  }
+  for (const b of BRIDGES) {
+    const n = norm(b.name);
+    if (n.length >= 5 && low.includes(n)) return { key: "b:" + b.id, name: b.name, lat: b.lat, lon: b.lng };
+  }
+  const extra = [
+    ["Видубичі", 50.379, 30.574],
+    ["Троєщина", 50.512, 30.605],
+    ["Осокорки", 50.395, 30.620],
+    ["Позняки", 50.410, 30.630],
+    ["Бортничі", 50.370, 30.680]
+  ];
+  for (const [name, lat, lon] of extra) {
+    if (low.includes(norm(name))) return { key: "x:" + norm(name), name, lat, lon };
+  }
+  return findSettlement(text);
+}
+
+/* ============ 9. POPUPS ============ */
+function buildThreatPopup(tx) {
+  const label = tx._exactName || getMeta(tx.type).label;
+  const eta = etaToKyivMin(tx.lat, tx.lon, tx.type);
+  const etaLine = eta != null ? `<div class="popup-eta">⏱ ~${Math.round(eta)} хв до Києва</div>` : "";
+  const altLine = tx._altitude != null ? `<div class="popup-alt">📌 Висота: <b>${formatAlt(tx._altitude)}</b></div>` : "";
+  const spdLine = `<div class="popup-speed">⚡ <b>${resolveSpeedKmh(tx.type)} км/год</b></div>`;
+  return `<div class="popup-title">${esc(label)} #${tx._trackId}</div>${spdLine}${etaLine}${altLine}<div class="popup-meta">${esc(tx.locality || tx.region || "—")}</div><button type="button" class="popup-remove-btn" data-remove="track" data-key="${esc(tx.id||"")}">🗑 Видалити</button>`;
+}
+function buildTrailPopup(chain) {
+  const meta = getMeta(chain.cls.type);
+  const label = chain.cls._exactName || meta.label;
+  const last = chain.points[chain.points.length - 1];
+  const eta = last ? etaToKyivMin(last.lat, last.lon, chain.cls.type) : null;
+  const spdLine = chain.speedLive ? `<div class="popup-speed">📡 Реальна: <b>${chain.speedLive} км/год</b></div>` : `<div class="popup-speed">⚡ <b>${resolveSpeedKmh(chain.cls.type)} км/год</b></div>`;
+  const altLine = chain.altitude != null ? `<div class="popup-alt">${chain._altDropping ? "▼" : "▲"} Висота: <b>${formatAlt(chain.altitude)}</b>${chain._altDropping ? " · ЗНИЖЕННЯ" : ""}</div>` : "";
+  const etaLine = eta != null ? `<div class="popup-eta">⏱ ~${Math.round(eta)} хв до Києва</div>` : "";
+  const pointsHtml = chain.points.slice(-15).map(p => `<div class="pt-point"><span>${esc(p.name)}</span><span class="pt-time">${new Date(p.t).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span></div>`).join("");
+  const chs = [...chain.channels].map(ch => `<span class="ch">${esc(ch)}</span>`).join("");
+  const route = chain.route && chain.route.length >= 2 ? `<div class="popup-route">📍 ${chain.route.map(p => esc(p.name)).join(" → ")}</div>` : "";
+  return `<div class="popup-title">${esc(label)} #${chain._trackId}</div>${spdLine}${etaLine}${altLine}${route}<div class="popup-trail"><div class="pt-title">Траєкторія · ${chain.points.length} точок</div>${pointsHtml}</div><div class="popup-channels"><b>Джерела (${chain.channels.size}):</b><br>${chs}</div><button type="button" class="popup-remove-btn" data-remove="msg" data-key="${esc(chain.key)}">🗑 Видалити</button>`;
+}
+
+/* ============ 10. CONE ============ */
+function drawCone(chain) {
+  coneLayer.clearLayers();
+  if (!chain || !chain.filter || !chain.filter.initialized) return;
+  const pos = chain.filter.pos();
+  let heading = chain.filter.heading();
+  if (heading == null) heading = bearingBetween(pos.lat, pos.lon, 50.45, 30.52);
+
+  const speed = chain.filter.speedKmh() || resolveSpeedKmh(chain.cls.type);
+  const isFast = ["jet_drone","ballistic","zircon","missile"].includes(chain.cls.type);
+  const len = isFast ? 90 : 55;
+  const spread = isFast ? 8 : 18;
+  const color = chain.cls.type === "zircon" ? "#a855f7" : "#dc2626";
+  const pts = [[pos.lat, pos.lon]];
+  for (let i = 0; i <= 14; i++) {
+    const a = heading - spread + 2 * spread * (i / 14);
+    pts.push(destPoint(pos.lat, pos.lon, a, len));
+  }
+  L.polygon(pts, { color, weight: 1.4, opacity: .55, fillColor: color, fillOpacity: .10, dashArray: "6 5", interactive: false }).addTo(coneLayer);
+  const mins = isFast ? [1,2,3] : [5,10,20];
+  for (const m of mins) {
+    const km = speed * m / 60;
+    if (km > len * 1.05) continue;
+    const [plat, plon] = destPoint(pos.lat, pos.lon, heading, km);
+    const near = findSettlementAt(plat, plon);
+    const txt = near ? `${near} +${m}хв` : `+${m}хв`;
+    L.marker([plat, plon], {
+      icon: L.divIcon({ className:"", html:`<div style="color:#7c3aed;font-size:11px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px rgba(255,255,255,.95);">${txt}</div>`, iconSize:[60,14], iconAnchor:[30,7] }),
+      interactive: false
+    }).addTo(coneLayer);
+  }
+}
+function drawConeForTrack(tr) {
+  coneLayer.clearLayers();
+  if (!tr || !tr.threat || !tr.filter || !tr.filter.initialized) return;
+  const pos = tr.filter.pos();
+  const tx = tr.threat;
+  let heading = tr.filter.heading();
+  if (heading == null) heading = bearingBetween(pos.lat, pos.lon, 50.45, 30.52);
+
+  const speed = tr.filter.speedKmh() || resolveSpeedKmh(tx.type);
+  const isFast = ["jet_drone","ballistic","zircon","missile"].includes(tx.type);
+  const len = isFast ? 90 : 55;
+  const spread = isFast ? 8 : 18;
+  const color = tx.type === "zircon" ? "#a855f7" : "#dc2626";
+  const pts = [[pos.lat, pos.lon]];
+  for (let i = 0; i <= 14; i++) {
+    const a = heading - spread + 2 * spread * (i / 14);
+    pts.push(destPoint(pos.lat, pos.lon, a, len));
+  }
+  L.polygon(pts, { color, weight: 1.4, opacity: .55, fillColor: color, fillOpacity: .10, dashArray: "6 5", interactive: false }).addTo(coneLayer);
+  const mins = isFast ? [1,2,3] : [5,10,20];
+  for (const m of mins) {
+    const km = speed * m / 60;
+    if (km > len * 1.05) continue;
+    const [plat, plon] = destPoint(pos.lat, pos.lon, heading, km);
+    const near = findSettlementAt(plat, plon);
+    const txt = near ? `${near} +${m}хв` : `+${m}хв`;
+    L.marker([plat, plon], {
+      icon: L.divIcon({ className:"", html:`<div style="color:#7c3aed;font-size:11px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px rgba(255,255,255,.95);">${txt}</div>`, iconSize:[60,14], iconAnchor:[30,7] }),
+      interactive: false
+    }).addTo(coneLayer);
+  }
+}
+function findSettlementAt(lat, lon) {
+  let best = null, bestD = Infinity;
+  for (const s of SETTLEMENTS) {
+    if (s[3] !== "c" && s[3] !== "s") continue;
+    const d = haversineKm(lat, lon, s[1], s[2]);
+    if (d < bestD) { bestD = d; best = s; }
+  }
+  return best && bestD < 20 ? best[0] : null;
+}
+
+/* ============ 11. TARGET PARSER ============ */
+const RE_DIRS = [
+  { re: /північно-?західн|пн\.?\s*-?\s*зх/i, deg: 315 },
+  { re: /північно-?східн|пн\.?\s*-?\s*сх/i, deg: 45 },
+  { re: /південно-?західн|пд\.?\s*-?\s*зх/i, deg: 225 },
+  { re: /південно-?східн|пд\.?\s*-?\s*сх/i, deg: 135 },
+  { re: /північн|пн\b/i, deg: 0 },
+  { re: /південн|пд\b/i, deg: 180 },
+  { re: /західн|зх\b/i, deg: 270 },
+  { re: /східн|сх\b/i, deg: 90 }
+];
+const LAUNCH_ORIGINS = [
+  {key:"курск",re:/курськ|курск/i,name:"Курськ",lat:51.73,lon:36.19},
+  {key:"белгород",re:/белгород|бєлгород/i,name:"Белгород",lat:50.60,lon:36.59},
+  {key:"брянск",re:/брянськ|брянск/i,name:"Брянск",lat:53.25,lon:34.37},
+  {key:"воронеж",re:/воронеж/i,name:"Воронеж",lat:51.67,lon:39.18},
+  {key:"чауда",re:/чауда/i,name:"Чауда",lat:45.00,lon:35.83},
+  {key:"джанкой",re:/джанкой/i,name:"Джанкой",lat:45.71,lon:34.39},
+  {key:"керч",re:/керч|керчь/i,name:"Керч",lat:45.35,lon:36.47},
+  {key:"ростов",re:/ростов/i,name:"Ростов",lat:47.24,lon:39.70}
+];
+function nearestOrigin(lat, lon) {
+  let best = null, bestD = Infinity;
+  for (const o of LAUNCH_ORIGINS) { const d = haversineKm(lat, lon, o.lat, o.lon); if (d < bestD) { bestD = d; best = o; } }
+  return { origin: best, dist: bestD };
+}
+const TARGET_RE = /(?:курс(?:ом)?\s+на|в\s+напрямку|у\s+напрямк|у\s+бік|летить\s+на|рухається\s+на|прямує\s+на|біля|возле|над|по\s+|на\s+)([А-ЯІЇЄҐа-яіїєґ'’\-]{3,30})/i;
+function getTarget(text) {
+  if (!text) return null;
+  const m = TARGET_RE.exec(text);
+  if (!m) return null;
+  return findSettlement(m[1].trim());
+}
+const THREAT_ACTION_RE = /(?:курс|летить|руха|напрямк|на\s+південь|на\s+північ|на\s+захід|на\s+схід|наближ|прямує|крутиться|зафіксован|спостеріга|помічен|виявлено)/i;
+const BALLISTIC_ACTION_RE = /(?:пуск|запуск|загроз[аиу]|летить|курс|удар|підтвердж|випущен|стартував|в\s+повітрі)/i;
+const BALLISTIC_NEG_RE = /(?:немає?\s+баліст|нема\s+баліст|без\s+баліст|відбій|отбой|не\s+підтверд|хибн|фейк)/i;
+const NO_LAUNCH_RE = /без\s+пуск|не\s+було\s+пуск|не\s+спостеріга|скасован|відмінено/i;
+const NON_AIR_RE = /(?:диверс|партизан|АТЕШ|саботаж|підпал|підрив|авіація\s+НАТО|батальйон|бригад|розібрал|запчастин)/i;
+const CLEAR_RE = /відбій|отбой|чисто|без\s+загроз|небезпека\s+минула/i;
+
+function extractPlaceAndType(text, channel) {
+  if (!text || NON_AIR_RE.test(text) || CLEAR_RE.test(text)) return null;
+  if (NO_LAUNCH_RE.test(text)) return null;
+  const cls = CLASSIFIER(text);
+  if (!cls || cls.isMig) return null;
+  const target = getTarget(text);
+  let place = null;
+  if (target) {
+    let srcBearing = null;
+    for (const d of RE_DIRS) if (d.re.test(text)) { srcBearing = d.deg; break; }
+    if (srcBearing == null) {
+      const src = nearestOrigin(target.lat, target.lon);
+      srcBearing = (src.origin && src.dist > 30) ? bearingBetween(src.origin.lat, src.origin.lon, target.lat, target.lon) : 180;
+    }
+    const [lat, lon] = destPoint(target.lat, target.lon, srcBearing, 40);
+    place = { key: "approach_" + target.key, name: target.name, lat, lon, _targetLat: target.lat, _targetLon: target.lon, _heading: (srcBearing + 180) % 360 };
+  } else {
+    const found = findSettlement(text);
+    if (!found) return null;
+    place = found;
+  }
+  if (!cls.hard && !THREAT_ACTION_RE.test(text)) return null;
+  const placeName = (place && place.name) || "";
+  if (!cls.hard && /^(київ|киев)$/i.test(placeName) && !target) return null;
+  return { place, cls, target, altitude: parseAltitude(text) };
+}
+
+function extractAllPlacesAndTypes(text, channel) {
+  if (!text) return [];
+  const chunks = text.split(/[.!?\n]+/).map(s => s.trim()).filter(s => s.length > 4);
+  const results = [];
+  const seenKeys = new Set();
+  for (const chunk of chunks) {
+    if (/^[А-ЯІЇЄҐ][а-яіїєґ]+щин[аиіу]\s*:?\s*$/i.test(chunk)) continue;
+    const ex = extractPlaceAndType(chunk, channel);
+    if (!ex) continue;
+    const pk = (ex.target && ex.target.key) || (ex.place && ex.place.key) || "";
+    if (pk && seenKeys.has(pk)) continue;
+    if (pk) seenKeys.add(pk);
+    results.push(ex);
+  }
+  if (!results.length) {
+    const ex = extractPlaceAndType(text, channel);
+    if (ex) results.push(ex);
+  }
+  return results;
+}
+function extractLaunchStage(text) {
+  if (!text || NON_AIR_RE.test(text) || CLEAR_RE.test(text)) return [];
+  const cls = CLASSIFIER(text);
+  if (!cls) return [];
+  const origins = [];
+  for (const o of LAUNCH_ORIGINS) if (o.re.test(text)) origins.push(o);
+  if (!origins.length) return [];
+  const target = getTarget(text);
+  return origins.map(o => ({ kind:"origin", name:o.name, lat:o.lat, lon:o.lon, cls, target }));
+}
+
+/* ============================================================
+   ★★★ 12. TRAILS — тепер із TrackFilter ★★★
+   ============================================================ */
+function trailKeyFor(cls, place, target) {
+  const bucket = cls.type.startsWith("geran") ? "shahed" : cls.type;
+  const key = target ? target.key : (place ? place.key : "unknown");
+  return bucket + "|" + key;
+}
+function getOrCreateTrail(key, cls, sampleText) {
+  let chain = State.trails.get(key);
+  if (!chain) {
+    chain = {
+      key, cls, points: [], firstSeen: Date.now(), lastSeen: Date.now(),
+      channels: new Set(), marker: null, polyline: null,
+      _trackId: State.trackIds(), _labelTime: Date.now(),
+      _etaMin: null, altitude: null, _altDropping: false, _falling: false,
+      speedLive: null, _speedReal: false, heading: null, route: null,
+      sampleText: sampleText || "",
+      // ★ Фільтр замінює всю стару логіку руху
+      filter: new TrackFilter({ alpha: 0.45, beta: 0.10, speedMaxKmh: 2500, reachBufferKm: 8 })
+    };
+    State.trails.set(key, chain);
+  }
+  return chain;
+}
+
+/**
+ * ★ ОНОВЛЕНИЙ appendPoint — тепер годує фільтр, а не пушить точки.
+ * Все ще пушить точку в points[] для історії траєкторії (polyline + попап),
+ * але позиція руху тепер керується фільтром.
+ */
+function appendPoint(chain, place, tgt) {
+  const now = Date.now();
+  const placeLat = place.lat, placeLon = place.lon;
+
+  // ★ Outlier rejection + Alpha-Beta update
+  // Дозволяємо override швидкості для балістики/КР
+  const speedOverride = ["ballistic","zircon","missile","jet_drone"].includes(chain.cls.type) ? 3000 : undefined;
+  const res = chain.filter.update(placeLat, placeLon, speedOverride);
+
+  if (!res.accepted && res.reason === "too-far") {
+    // Вимірювання фізично неможливе — пропускаємо, але логуємо
+    console.warn(`[filter] rejected for ${chain.key}: ${Math.round(res.dist)} км > ${Math.round(res.maxReach)} км`);
+    return;
+  }
+
+  // Додаємо точку в історію (для polyline / popup)
+  const last = chain.points[chain.points.length - 1];
+  if (!last || haversineKm(last.lat, last.lon, placeLat, placeLon) > 0.15) {
+    chain.points.push({
+      lat: placeLat,
+      lon: placeLon,
+      name: place.name || (tgt && tgt.name) || "—",
+      t: now
+    });
+    if (chain.points.length > 500) chain.points.shift();
+  } else {
+    last.t = now;
+  }
+
+  chain.lastSeen = now;
+  chain._labelTime = now;
+
+  // Оновлюємо реальну швидкість з фільтра (замість ручного розрахунку)
+  const vKmh = chain.filter.speedKmh();
+  if (vKmh > 30 && vKmh < 3000) {
+    chain.speedLive = Math.round(vKmh);
+    chain._speedReal = true;
+  }
+
+  // Оновлюємо курс з фільтра (якщо є швидкість)
+  const h = chain.filter.heading();
+  if (h != null) {
+    chain.heading = h;
+    chain._explicitHeading = true;
+  } else if (place._heading != null) {
+    chain.heading = place._heading;
+    chain._explicitHeading = true;
+  } else if (tgt) {
+    chain.heading = bearingBetween(placeLat, placeLon, tgt.lat, tgt.lon);
+    chain._explicitHeading = true;
+  } else if (chain.heading == null) {
+    chain.heading = 0;
+  }
+
+  // Оновлюємо polyline якщо вона є
+  if (chain.polyline) {
+    try { chain.polyline.setLatLngs(chain.points.map(p => [p.lat, p.lon])); } catch (e) {}
+  }
+}
+
+function setAltitude(chain, newAlt) {
+  if (newAlt == null) return;
+  const prev = chain.altitude;
+  if (prev != null && prev - newAlt >= 200 && (prev - newAlt) / prev >= 0.15) {
+    chain._altDropping = true;
+    chain._altDropUntil = Date.now() + 10000;
+    if (chain.cls) {
+      chain.cls._altDropping = true;
+      chain.cls._altDropUntil = chain._altDropUntil;
+    }
+    playAltDropSound();
+    try {
+      if (chain.marker) {
+        const h = chain.heading != null ? chain.heading : 0;
+        const isActive = State.lastActive && State.lastActive.type === "msg" && State.lastActive.key === chain.key;
+        chain.marker.setIcon(buildIcon(chain.cls, h, chain.channels.size, false, isActive, chain.speedLive || resolveSpeedKmh(chain.cls.type)));
+      }
+    } catch (e) {}
+  } else if (prev != null && newAlt > prev + 100) {
+    chain._altDropping = false;
+    chain._altDropUntil = 0;
+    if (chain.cls) { chain.cls._altDropping = false; chain.cls._altDropUntil = 0; }
+  }
+  if (chain._altDropping && chain._altDropUntil && Date.now() > chain._altDropUntil) {
+    chain._altDropping = false;
+    if (chain.cls) chain.cls._altDropping = false;
+  }
+  chain.altitude = newAlt;
+  chain._labelTime = Date.now();
+}
+
+function removeTrailsNearImpact(place, radiusKm) {
+  if (!place) return;
+  const R = radiusKm || 25;
+  for (const [key, chain] of [...State.trails]) {
+    if (!chain.filter || !chain.filter.initialized) continue;
+    const pos = chain.filter.pos();
+    const d = haversineKm(pos.lat, pos.lon, place.lat, place.lon);
+    if (d <= R) {
+      try { if (chain.marker) msgLayer.removeLayer(chain.marker); } catch (e) {}
+      if (State.lastActive && State.lastActive.type === "msg" && State.lastActive.key === key) {
+        State.lastActive = null;
+        coneLayer.clearLayers();
+        clearTrailHistory();
+      }
+      State.trails.delete(key);
+    }
+  }
+  for (const [id, tr] of [...State.tracks]) {
+    if (!tr.threat || !tr.filter || !tr.filter.initialized) continue;
+    const pos = tr.filter.pos();
+    const d = haversineKm(pos.lat, pos.lon, place.lat, place.lon);
+    if (d <= R) {
+      try { if (tr.marker) threatLayer.removeLayer(tr.marker); } catch (e) {}
+      if (State.lastActive && State.lastActive.type === "track" && State.lastActive.id === id) {
+        State.lastActive = null;
+        coneLayer.clearLayers();
+      }
+      State.tracks.delete(id);
+    }
+  }
+}
+
+/* ============================================================
+   ★★★ 12b. РУХ — тепер ЛИШЕ prediction фільтра ★★★
+   ============================================================
+   Весь старий код stepToward/dwell/move/extra видалено.
+   Тепер tickChainMotion і tickTrackMotion просто викликають
+   filter.predict() і оновлюють позицію маркера.
+
+   Плавність: 10 fps (100 мс) → непомітно оку.
+   За потреби можна перевести на requestAnimationFrame.
+   ============================================================ */
+const MOVE_TICK_MS = 100;
+
+function tickChainMotion(chain) {
+  if (!chain.marker || !chain.filter || !chain.filter.initialized) return;
+
+  // ★ Prediction: фільтр сам рухає позицію за своєю швидкістю
+  const pos = chain.filter.predict();
+  if (!pos) return;
+
+  try {
+    chain.marker.setLatLng([pos.lat, pos.lon]);
+
+    // Синхронізуємо cls з актуальним станом
+    const speedNow = chain.filter.speedKmh();
+    if (speedNow > 30) chain.speedLive = Math.round(speedNow);
+
+    let heading = chain.filter.heading();
+    if (heading == null) heading = chain.heading != null ? chain.heading : 0;
+
+    // Таймер червоної пульсації
+    let dropChanged = false;
+    if (chain._altDropping && chain._altDropUntil && Date.now() > chain._altDropUntil) {
+      chain._altDropping = false;
+      chain._altDropUntil = 0;
+      dropChanged = true;
+    }
+    if (chain.cls) {
+      chain.cls._altitude = chain.altitude;
+      chain.cls._altDropping = chain._altDropping;
+      chain.cls._altDropUntil = chain._altDropUntil;
+      chain.cls._trackId = chain._trackId;
+      chain.cls._etaMin = chain._etaMin;
+      chain.cls._speedReal = chain._speedReal;
+    }
+
+    const isActive = State.lastActive && State.lastActive.type === "msg" && State.lastActive.key === chain.key;
+    const needPulseRedraw = !!chain._altDropping || dropChanged;
+
+    // Перемальовуємо іконку при зміні курсу, активації або пульсації
+    if (chain._lastDrawnHeading !== heading || isActive || needPulseRedraw) {
+      chain._lastDrawnHeading = heading;
+      chain.marker.setIcon(buildIcon(
+        chain.cls,
+        heading,
+        chain.channels.size,
+        false,
+        isActive,
+        chain.speedLive || resolveSpeedKmh(chain.cls.type)
+      ));
+    }
+  } catch (e) {}
+}
+
+function tickTrackMotion(tr) {
+  if (!tr.marker || !tr.filter || !tr.filter.initialized) return;
+
+  const pos = tr.filter.predict();
+  if (!pos) return;
+
+  try {
+    tr.marker.setLatLng([pos.lat, pos.lon]);
+
+    let heading = tr.filter.heading();
+    if (heading == null) heading = bearingBetween(pos.lat, pos.lon, 50.45, 30.52);
+
+    if (tr._lastDrawnHeading !== heading) {
+      tr._lastDrawnHeading = heading;
+      const isActive = State.lastActive && State.lastActive.type === "track" && State.lastActive.id === tr.id;
+      tr.marker.setIcon(buildIcon(
+        tr.threat,
+        heading,
+        1,
+        false,
+        isActive,
+        tr.filter.speedKmh() || resolveSpeedKmh(tr.threat.type)
+      ));
+    }
+  } catch (e) {}
+}
+
+let _lastTickTs = Date.now();
+function tickVisuals() {
+  try {
+    for (const chain of State.trails.values()) tickChainMotion(chain);
+    for (const tr of State.tracks.values()) tickTrackMotion(tr);
+
+    if (State.lastActive) {
+      if (State.lastActive.type === "msg") {
+        const c = State.trails.get(State.lastActive.key);
+        if (c) { drawCone(c); drawTrailHistory(c); }
+      } else if (State.lastActive.type === "track") {
+        const t = State.tracks.get(State.lastActive.id);
+        if (t) drawConeForTrack(t);
+      }
+    }
+    updateBottomCard();
+  } catch (e) { console.warn("tickVisuals", e); }
+}
+
+/** Історія маршруту — тепер показує точки вимірювань + поточну позицію фільтра */
+function drawTrailHistory(chain) {
+  if (!trailLayer) return;
+  trailLayer.clearLayers();
+  if (!chain || !chain.points || chain.points.length < 1) return;
+
+  const latlngs = chain.points.map(p => [p.lat, p.lon]);
+
+  // Додаємо поточну (відфільтровану) позицію як останню точку лінії
+  if (chain.filter && chain.filter.initialized) {
+    const pos = chain.filter.pos();
+    latlngs.push([pos.lat, pos.lon]);
+  }
+
+  if (latlngs.length >= 2) {
+    L.polyline(latlngs, {
+      color: "#22d3ee", weight: 2.5, opacity: 0.85,
+      dashArray: null, lineCap: "round", lineJoin: "round"
+    }).addTo(trailLayer);
+  }
+
+  // Точки вимірювань (де були реальні повідомлення)
+  for (let i = 0; i < chain.points.length; i++) {
+    const p = chain.points[i];
+    const isLast = i === chain.points.length - 1;
+    L.circleMarker([p.lat, p.lon], {
+      radius: isLast ? 5 : 3.5,
+      color: isLast ? "#f97316" : "#22d3ee",
+      weight: 1.5,
+      fillColor: isLast ? "#f97316" : "#67e8f9",
+      fillOpacity: 0.9,
+      interactive: false
+    }).addTo(trailLayer);
+  }
+
+  // Поточна позиція фільтра (зелений кружок)
+  if (chain.filter && chain.filter.initialized) {
+    const pos = chain.filter.pos();
+    L.circleMarker([pos.lat, pos.lon], {
+      radius: 6,
+      color: "#34d399",
+      weight: 2,
+      fillColor: "#34d399",
+      fillOpacity: 0.35,
+      interactive: false
+    }).addTo(trailLayer);
+  }
+}
+function clearTrailHistory() {
+  if (trailLayer) trailLayer.clearLayers();
+}
+
+/* ============ 13. ALERT / AUDIO ============ */
+let audioCtx = null;
+function initAudio() {
+  if (audioCtx) return audioCtx;
+  try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+  return audioCtx;
+}
+function unlockAudio() { const c = initAudio(); if (c && c.state === "suspended") c.resume().catch(()=>{}); }
+function playBell() {
+  if (!CFG.SOUND_ENABLED || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  [880, 1760].forEach((f, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t + i*0.1);
+    g.gain.exponentialRampToValueAtTime(.25, t + i*0.1 + 0.02);
+    g.gain.exponentialRampToValueAtTime(.0001, t + i*0.1 + 1.2);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i*0.1); o.stop(t + i*0.1 + 1.3);
+  });
+}
+function playAltDropSound() {
+  if (!CFG.SOUND_ENABLED || !audioCtx) return;
+  const t = audioCtx.currentTime;
+  [700, 550, 400, 300].forEach((f, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "sawtooth"; o.frequency.value = f;
+    g.gain.setValueAtTime(.0001, t + i*0.16);
+    g.gain.linearRampToValueAtTime(.25, t + i*0.16 + 0.02);
+    g.gain.exponentialRampToValueAtTime(.0001, t + i*0.16 + 0.15);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(t + i*0.16); o.stop(t + i*0.16 + 0.17);
+  });
+}
+let topAlertTimer = null;
+let _ballisticDismissedUntil = 0;
+let _lastBallisticKey = "";
+let _lastBallisticAt = 0;
+function showTopAlert({kind, icon, title, place, meta, key}) {
+  const el = $("topAlert"); if (!el) return;
+  if (kind === "ballistic") {
+    if (Date.now() < _ballisticDismissedUntil) return;
+    const k = key || title + "|" + (place || "");
+    if (k === _lastBallisticKey && Date.now() - _lastBallisticAt < 5 * 60 * 1000) return;
+    _lastBallisticKey = k;
+    _lastBallisticAt = Date.now();
+  }
+  el.className = "top-alert show " + kind;
+  $("topAlertIcon").textContent = icon || "🚨";
+  $("topAlertTitle").textContent = title || "";
+  if (place) { $("topAlertPlace").textContent = place; $("topAlertPlace").style.display = "block"; } else $("topAlertPlace").style.display = "none";
+  if (meta) { $("topAlertMeta").textContent = meta; $("topAlertMeta").style.display = "block"; } else $("topAlertMeta").style.display = "none";
+  if (topAlertTimer) clearTimeout(topAlertTimer);
+  topAlertTimer = setTimeout(hideTopAlert, 25000);
+}
+function hideTopAlert() {
+  const el = $("topAlert");
+  if (el) {
+    if (el.classList.contains("ballistic")) _ballisticDismissedUntil = Date.now() + 5 * 60 * 1000;
+    el.classList.remove("show");
+  }
+}
+
+/* ============ 14. PROCESSING ============ */
+function processMessage(text, ch) {
+  if (!text || text.length < 5) return;
+  if (NO_LAUNCH_RE.test(text)) return;
+  if (/балістік|баллистик|кинжал|кінжал|іскандер|искандер|циркон|zircon|кн-?23/i.test(text)
+      && BALLISTIC_ACTION_RE.test(text)
+      && !BALLISTIC_NEG_RE.test(text)) {
+    showTopAlert({
+      kind: "ballistic", icon: "🚨",
+      title: "УВАГА! ЗАГРОЗА БАЛІСТИКИ",
+      place: "Пуск балістики або Циркон",
+      meta: "НЕГАЙНО ДО УКРИТТЯ!",
+      key: norm(text).slice(0, 80)
+    });
+    playBell();
+  }
+  const launches = extractLaunchStage(text);
+  for (const l of launches) {
+    const key = "launch|" + l.name + "|" + l.cls.type;
+    if (!State.msgMarkers.has(key)) {
+      const tx = { type:l.cls.type, _trackId:State.trackIds(), _labelTime:Date.now(), _altitude:null, _exactName:l.cls.label };
+      const marker = L.marker([l.lat, l.lon], { icon: buildIcon(tx, null, 1, true, false, 0), zIndexOffset: 950 });
+      marker.bindPopup(`<div class="popup-title">ПУСК · ${esc(l.cls.label)}</div><div style="font-size:.72rem">${esc(text.slice(0,220))}</div><div class="popup-meta">${esc(l.name)}</div>`, { maxWidth: 280 });
+      marker.addTo(msgLayer);
+      State.msgMarkers.set(key, { marker, isStatic: true, lastSeen: Date.now(), chain: null });
+    } else {
+      State.msgMarkers.get(key).lastSeen = Date.now();
+    }
+  }
+  const allEx = extractAllPlacesAndTypes(text, ch);
+  for (const ex of allEx) {
+    const { place, cls, target } = ex;
+    let alt = ex.altitude != null ? ex.altitude : parseAltitude(text);
+    if (alt == null) alt = parseAltitude(String(text || ""));
+    cls._exactName = detectExactName(text) || null;
+    cls._labelTime = Date.now();
+    const key = trailKeyFor(cls, place, target);
+    const chain = getOrCreateTrail(key, cls, text);
+    chain.cls = cls;
+    chain.channels.add(normalizeChannel(ch));
+    chain._etaMin = etaToKyivMin(place.lat, place.lon, cls.type);
+    if (target) { chain.route = [target]; }
+    appendPoint(chain, place, target);
+    if (alt != null) setAltitude(chain, alt);
+    cls._trackId = chain._trackId;
+    cls._etaMin = chain._etaMin;
+    cls._altitude = chain.altitude;
+    cls._altDropping = chain._altDropping;
+    cls._speedReal = chain._speedReal;
+    cls._stage = "threat";
+    chain.cls = cls;
+
+    // Початкова позиція маркера = позиція фільтра (не place!)
+    const filterPos = chain.filter.pos();
+    const markerPos = filterPos || { lat: place.lat, lon: place.lon };
+
+    if (!chain.marker) {
+      const marker = L.marker([markerPos.lat, markerPos.lon], {
+        icon: buildIcon(cls, chain.heading, chain.channels.size, false, false, chain.speedLive || resolveSpeedKmh(cls.type)),
+        zIndexOffset: 900
+      });
+      marker.on("click", (e) => {
+        L.DomEvent.stopPropagation(e);
+        selectMarker(key);
+      });
+      marker.addTo(msgLayer);
+      chain.marker = marker;
+    } else {
+      try {
+        chain.marker.setIcon(buildIcon(cls, chain.heading, chain.channels.size, false, false, chain.speedLive || resolveSpeedKmh(cls.type)));
+      } catch (e) {}
+    }
+    if (State.lastActive && State.lastActive.key === key) {
+      try { chain.marker.setIcon(buildIcon(cls, chain.heading, chain.channels.size, false, true, chain.speedLive || resolveSpeedKmh(cls.type))); } catch (e) {}
+    }
+  }
+}
+
+/* ============ 15. IMPACT ============ */
+function processImpact(text, ch) {
+  if (!text) return;
+  const lower = text.toLowerCase();
+  let kind = null, label = "", icon = "💥";
+  if (/(?:збит[тоя]|сбит[оы]|перехоплен|знищен)/i.test(lower)) { kind = "shot"; label = "Збиття"; icon = "🛡"; }
+  else if (/(?:падає|падають|падінн|впав|упал|знижується|втрачає\s+висоту|уламк|обломк)/i.test(lower)) { kind = "down"; label = "Падіння"; icon = "🛬"; }
+  else if (/(?:пожеж|пожар|горит|задымлен)/i.test(lower)) { kind = "fire"; label = "Пожежа"; icon = "🔥"; }
+  else if (/(?:прил[іi]т|прилет|влучив|вражено|удар\s+по|досягла\s+цілі|вибух|взрыв|детонац)/i.test(lower)) { kind = "hit"; label = "Вибух / приліт"; icon = "💥"; }
+  if (!kind) return;
+
+  const place = resolveImpactPlace(text);
+  if (!place) return;
+
+  const key = "impact|" + kind + "|" + place.key;
+  if (State.impactReports.has(key)) {
+    State.impactReports.get(key).lastSeen = Date.now();
+    return;
+  }
+
+  const chName = normalizeChannel(ch);
+  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const coordStr = place.lat.toFixed(3) + ", " + place.lon.toFixed(3);
+  const popup = `
+    <div class="popup-title">${icon} ${esc(label)}</div>
+    <div style="font-weight:700;margin-top:4px">${esc(place.name)}</div>
+    <div class="popup-meta">${esc(coordStr)}</div>
+    <div class="popup-meta">Джерела: 1 · ${esc(timeStr)}</div>
+    <div class="popup-channels" style="margin-top:6px"><span class="ch">${esc(chName)}</span></div>
+    <button type="button" class="popup-remove-btn" data-remove="impact" data-key="${esc(key)}">🗑 Видалити</button>`;
+
+  const marker = L.marker([place.lat, place.lon], {
+    icon: buildImpactIcon(kind),
+    zIndexOffset: 1100
+  });
+  marker.bindPopup(popup, { maxWidth: 280 });
+  marker.addTo(impactLayer);
+  State.impactReports.set(key, {
+    marker, place, kind, label,
+    lastSeen: Date.now(), firstSeen: Date.now(), channel: chName
+  });
+
+  showTopAlert({
+    kind: "impact",
+    icon,
+    title: label.toUpperCase(),
+    place: place.name,
+    meta: coordStr + " · " + chName,
+    key: key
+  });
+  if (kind === "hit" || kind === "down" || kind === "shot") {
+    playBell();
+    removeTrailsNearImpact(place, 30);
+    updateBottomCard();
+  }
+}
+
+/* ============ 16. THREATS (API) ============ */
+function syncThreats(list) {
+  if (!list || !list.length) return;
+  const seen = new Set();
+  for (const raw of list) {
+    if (!raw || raw.id == null || raw.lat == null || raw.lon == null) continue;
+    seen.add(raw.id);
+    const txt = [raw.type, raw.title, raw.explanationShort].filter(Boolean).join(" ");
+    const cls = CLASSIFIER(txt) || { type: "uav", label: "БПЛА" };
+    const type = cls.type;
+    let existing = State.tracks.get(raw.id);
+    const eta = etaToKyivMin(raw.lat, raw.lon, type);
+
+    const tx = existing ? existing.threat : {
+      id: raw.id, type, lat: raw.lat, lon: raw.lon,
+      locality: raw.locality, region: raw.region,
+      _trackId: State.trackIds(),
+      _exactName: detectExactName(txt),
+      _altitude: parseAltitude(raw),
+      _labelTime: Date.now(),
+      _etaMin: eta,
+      _speedReal: false,
+      _altDropping: false
+    };
+
+    // ★ Оновлюємо фільтр
+    if (!existing) {
+      // Новий трек — створюємо фільтр
+      const speedMax = ["ballistic","zircon","missile","jet_drone"].includes(type) ? 3000 : 900;
+      const filter = new TrackFilter({ alpha: 0.5, beta: 0.12, speedMaxKmh: speedMax, reachBufferKm: 10 });
+      filter.init(raw.lat, raw.lon);
+
+      tx.lat = raw.lat;
+      tx.lon = raw.lon;
+      tx._etaMin = eta;
+      tx._labelTime = Date.now();
+      tx._posTime = Date.now();
+
+      const heading = bearingBetween(raw.lat, raw.lon, 50.45, 30.52);
+      const marker = L.marker([raw.lat, raw.lon], { icon: buildIcon(tx, heading, 1, false, false, resolveSpeedKmh(type)), zIndexOffset: 800 });
+      marker.on("click", (e) => { L.DomEvent.stopPropagation(e); selectTrack(raw.id); });
+      marker.addTo(threatLayer);
+      State.tracks.set(raw.id, { id: raw.id, marker, threat: tx, filter });
+    } else {
+      // Оновлюємо існуючий
+      const posBefore = existing.filter.pos();
+      const res = existing.filter.update(raw.lat, raw.lon);
+
+      if (res.accepted) {
+        // Позицію маркера оновить tickVisuals (через prediction)
+        // Тут лише синхронізуємо threat-об'єкт
+        tx.lat = raw.lat;
+        tx.lon = raw.lon;
+        tx._etaMin = eta;
+        tx._labelTime = Date.now();
+        tx._posTime = Date.now();
+        existing.threat = tx;
+
+        const heading = existing.filter.heading() || bearingBetween(raw.lat, raw.lon, 50.45, 30.52);
+        const isActive = State.lastActive && State.lastActive.type === "track" && State.lastActive.id === raw.id;
+        try { existing.marker.setIcon(buildIcon(tx, heading, 1, false, isActive, existing.filter.speedKmh() || resolveSpeedKmh(type))); } catch (e) {}
+      } else if (res.reason === "too-far") {
+        console.warn(`[filter-track] rejected #${raw.id}: ${Math.round(res.dist)} км`);
+      }
+    }
+  }
+  for (const id of [...State.tracks.keys()]) {
+    if (!seen.has(id)) {
+      const tr = State.tracks.get(id);
+      if (tr.marker) threatLayer.removeLayer(tr.marker);
+      State.tracks.delete(id);
+    }
+  }
+  updateBottomCard();
+}
+
+/* ============ 17. SELECT MARKER ============ */
+function clearActive() {
+  if (State.lastActive) {
+    if (State.lastActive.type === "msg") {
+      const chain = State.trails.get(State.lastActive.key);
+      if (chain && chain.marker) {
+        const h = chain.filter ? (chain.filter.heading() || chain.heading || 0) : (chain.heading || 0);
+        try { chain.marker.setIcon(buildIcon(chain.cls, h, chain.channels.size, false, false, chain.speedLive || resolveSpeedKmh(chain.cls.type))); } catch (e) {}
+      }
+    } else if (State.lastActive.type === "track") {
+      const tr = State.tracks.get(State.lastActive.id);
+      if (tr && tr.marker) {
+        const h = tr.filter ? (tr.filter.heading() || bearingBetween(tr.threat.lat, tr.threat.lon, 50.45, 30.52)) : bearingBetween(tr.threat.lat, tr.threat.lon, 50.45, 30.52);
+        try { tr.marker.setIcon(buildIcon(tr.threat, h, 1, false, false, tr.filter ? tr.filter.speedKmh() : resolveSpeedKmh(tr.threat.type))); } catch (e) {}
+      }
+    }
+    coneLayer.clearLayers();
+    clearTrailHistory();
+    State.lastActive = null;
+  }
+}
+function selectMarker(key) {
+  if (State.lastActive && State.lastActive.type === "msg" && State.lastActive.key === key) { clearActive(); updateBottomCard(); return; }
+  clearActive();
+  State.lastActive = { type: "msg", key };
+  const chain = State.trails.get(key);
+  if (!chain || !chain.marker) return;
+  let h = chain.filter && chain.filter.heading();
+  if (h == null) h = chain.heading != null ? chain.heading : 0;
+  if (chain.cls) {
+    chain.cls._altitude = chain.altitude;
+    chain.cls._altDropping = chain._altDropping;
+    chain.cls._trackId = chain._trackId;
+    chain.cls._etaMin = chain._etaMin;
+  }
+  try { chain.marker.setIcon(buildIcon(chain.cls, h, chain.channels.size, false, true, chain.speedLive || resolveSpeedKmh(chain.cls.type))); } catch (e) {}
+  try { chain.marker.unbindPopup(); } catch (e) {}
+  drawCone(chain);
+  drawTrailHistory(chain);
+  updateBottomCard();
+}
+function selectTrack(id) {
+  if (State.lastActive && State.lastActive.type === "track" && State.lastActive.id === id) { clearActive(); updateBottomCard(); return; }
+  clearActive();
+  State.lastActive = { type: "track", id };
+  const tr = State.tracks.get(id);
+  if (!tr || !tr.marker) return;
+  let h = tr.filter && tr.filter.heading();
+  if (h == null) h = bearingBetween(tr.threat.lat, tr.threat.lon, 50.45, 30.52);
+  try { tr.marker.setIcon(buildIcon(tr.threat, h, 1, false, true, tr.filter ? tr.filter.speedKmh() : resolveSpeedKmh(tr.threat.type))); } catch (e) {}
+  try { tr.marker.unbindPopup(); } catch (e) {}
+  drawConeForTrack(tr);
+  updateBottomCard();
+}
+window.selectMarker = selectMarker;
+window.selectTrack = selectTrack;
+
+/* ============ 18. BOTTOM CARD ============ */
+function isBottomCardOn() {
+  const b = $("btnVisual");
+  return b && b.classList.contains("on");
+}
+function updateBottomCard() {
+  const card = $("bottomCard"); if (!card) return;
+  if (!isBottomCardOn()) {
+    card.classList.remove("show");
+    document.body.classList.remove("card-on");
+    return;
+  }
+  card.classList.add("show");
+  document.body.classList.add("card-on");
+
+  let chain = null, tr = null;
+  if (State.lastActive) {
+    if (State.lastActive.type === "msg") chain = State.trails.get(State.lastActive.key);
+    else if (State.lastActive.type === "track") tr = State.tracks.get(State.lastActive.id);
+  }
+  if (!chain && !tr) {
+    let bestD = Infinity;
+    for (const c of State.trails.values()) {
+      if (!c.filter || !c.filter.initialized) continue;
+      const pos = c.filter.pos();
+      const d = distToKyiv(pos.lat, pos.lon);
+      if (d < bestD) { bestD = d; chain = c; tr = null; }
+    }
+    for (const t of State.tracks.values()) {
+      if (!t.filter || !t.filter.initialized) continue;
+      const pos = t.filter.pos();
+      const d = distToKyiv(pos.lat, pos.lon);
+      if (d < bestD) { bestD = d; tr = t; chain = null; }
+    }
+  }
+
+  const dot = $("bcDot"), txt = $("bcText"), num = $("bcEtaNum"), unit = $("bcEtaUnit");
+  const altChip = $("bcAltChip"), altVal = $("bcAltVal");
+  const spdChip = $("bcSpdChip"), spdVal = $("bcSpdVal");
+  const distChip = $("bcDistChip"), distVal = $("bcDistVal");
+  const timeChip = $("bcTimeChip"), timeVal = $("bcTimeVal");
+  const infoPlace = $("bcInfoPlace"), infoId = $("bcInfoId");
+
+  let alt = null, spd = null, dist = null, time = null, place = null, trackId = null, etaMin = null;
+  if (chain) {
+    const last = chain.points[chain.points.length - 1];
+    const pos = chain.filter && chain.filter.initialized ? chain.filter.pos() : last;
+    if (pos) {
+      alt = chain.altitude;
+      spd = (chain.filter ? chain.filter.speedKmh() : 0) || chain.speedLive || resolveSpeedKmh(chain.cls.type);
+      dist = distToKyiv(pos.lat, pos.lon);
+      time = chain.firstSeen;
+      place = last ? last.name : "—";
+      trackId = chain._trackId;
+      etaMin = dist / (spd || 160) * 60;
+    }
+  } else if (tr) {
+    const pos = tr.filter && tr.filter.initialized ? tr.filter.pos() : { lat: tr.threat.lat, lon: tr.threat.lon };
+    alt = tr.threat._altitude;
+    spd = (tr.filter ? tr.filter.speedKmh() : 0) || resolveSpeedKmh(tr.threat.type);
+    dist = distToKyiv(pos.lat, pos.lon);
+    time = tr.threat._labelTime || Date.now();
+    place = tr.threat.locality || tr.threat.region;
+    trackId = tr.threat._trackId;
+    etaMin = dist / (spd || 160) * 60;
+  }
+
+  altChip.className = alt != null ? "kv alt" : "kv alt empty";
+  altVal.textContent = alt != null ? formatAlt(alt) : "—";
+  spdChip.className = (spd != null && spd > 0) ? "kv spd" : "kv spd empty";
+  spdVal.textContent = (spd != null && spd > 0) ? Math.round(spd) + " км/год" : "—";
+  distChip.className = dist != null ? "kv dist" : "kv dist empty";
+  distVal.textContent = dist != null ? Math.round(dist) + " км" : "—";
+  timeChip.className = time != null ? "kv time" : "kv time empty";
+  timeVal.textContent = time != null ? new Date(time).toLocaleTimeString([], { hour:"2-digit", minute:"2-digit" }) : "—";
+  infoPlace.textContent = place ? "📍 " + place : "📍 —";
+  if (trackId) { infoId.textContent = "🏷 #" + trackId; infoId.style.display = "inline-flex"; } else infoId.style.display = "none";
+
+  if (!chain && !tr) {
+    dot.className = "bc-dot safe"; txt.innerHTML = "Загроз не видно";
+    num.textContent = "—"; num.classList.remove("crit"); unit.classList.remove("crit");
+    return;
+  }
+  const etaTxt = etaMin < 1 ? "~1" : (etaMin < 60 ? "~" + Math.round(etaMin) : "~" + Math.floor(etaMin/60) + "г");
+  num.textContent = etaTxt;
+  const crit = etaMin < 5;
+  num.classList.toggle("crit", crit); unit.classList.toggle("crit", crit);
+  if (etaMin < 5) { dot.className = "bc-dot crit"; txt.innerHTML = `Ціль <b>#${trackId}</b><br>уже над містом`; unit.textContent = "хв"; }
+  else if (etaMin < 30) { dot.className = "bc-dot warn"; txt.innerHTML = `Ціль <b>#${trackId}</b><br>прямує до міста`; unit.textContent = "хв до міста"; }
+  else { dot.className = "bc-dot safe"; txt.innerHTML = `Ціль <b>#${trackId}</b><br>на підльоті`; unit.textContent = "хв до міста"; }
+}
+window.updateBottomCard = updateBottomCard;
+
+/* ============ 19. LAYERS ============ */
+function drawSettlements() {
+  settlementsLayer.clearLayers();
+  const z = map.getZoom();
+  if (z < 10) { if (map.hasLayer(settlementsLayer)) map.removeLayer(settlementsLayer); return; }
+  if (!map.hasLayer(settlementsLayer)) settlementsLayer.addTo(map);
+  const max = z >= 13 ? 9999 : (z >= 11 ? 200 : 60);
+  let count = 0;
+  for (const s of SETTLEMENTS) {
+    if (count >= max) break;
+    const icon = L.divIcon({ className: "settlement-marker", html: `<div class="settlement-dot ${s[3]==="c"?"city":""}"></div>`, iconSize: [8,8], iconAnchor: [4,4] });
+    L.marker([s[1], s[2]], { icon, interactive: false }).addTo(settlementsLayer);
+    count++;
+  }
+}
+function toggleSettlements() {
+  settlementsVisible = !settlementsVisible;
+  $("btnSettlements").classList.toggle("on", settlementsVisible);
+  if (settlementsVisible) drawSettlements(); else if (map.hasLayer(settlementsLayer)) map.removeLayer(settlementsLayer);
+  showToast(settlementsVisible ? "🏘 ON" : "🏘 OFF");
+}
+function drawInfra() {
+  infraLayer.clearLayers();
+  if (!infraMode) { if (map.hasLayer(infraLayer)) map.removeLayer(infraLayer); return; }
+  if (!map.hasLayer(infraLayer)) infraLayer.addTo(map);
+  if (infraMode === 1 || infraMode === 4) {
+    for (const b of BRIDGES) {
+      const m = L.marker([b.lat, b.lng], { icon: L.divIcon({ className:"infra-marker", html:`<div class="infra-bridge">🌉</div>`, iconSize:[22,22], iconAnchor:[11,11] }) });
+      m.bindPopup(`<div class="popup-title">🌉 ${esc(b.name)}</div><div class="popup-meta">${esc(b.district)}</div>`);
+      m.addTo(infraLayer);
+    }
+  }
+  if (infraMode === 2 || infraMode === 4) {
+    for (const e of ENERGY) {
+      const m = L.marker([e.lat, e.lng], { icon: L.divIcon({ className:"infra-marker", html:`<div class="infra-energy">🏭</div>`, iconSize:[22,22], iconAnchor:[11,11] }) });
+      m.bindPopup(`<div class="popup-title">⚡ ${esc(e.name)}</div><div class="popup-meta">${e.category}</div>`);
+      m.addTo(infraLayer);
+    }
+  }
+}
+function toggleInfra() {
+  infraMode = (infraMode + 1) % 5;
+  const b = $("btnInfra");
+  b.classList.remove("on","infrastructure","energy","incidents");
+  if (infraMode === 1) b.classList.add("infrastructure");
+  else if (infraMode === 2) b.classList.add("energy");
+  else if (infraMode === 4) b.classList.add("on");
+  drawInfra();
+  showToast(["🏗 OFF","🏗 Мости","🏗 Енергетика","🏗 Інциденти","🏗 Все"][infraMode]);
+}
+function drawPower() {
+  powerLayer.clearLayers();
+  if (!powerVisible) { if (map.hasLayer(powerLayer)) map.removeLayer(powerLayer); return; }
+  if (!map.hasLayer(powerLayer)) powerLayer.addTo(map);
+  for (const [name, lat, lng, v] of SUBSTATIONS) {
+    const color = v === "750" ? "#dc2626" : v === "330" ? "#f97316" : "#facc15";
+    const m = L.circleMarker([lat, lng], { radius: 6, color, weight: 2, fillColor: color, fillOpacity: 0.7 });
+    m.bindPopup(`<div class="popup-title">⚡ ${esc(name)}</div><div class="popup-meta">${v} kV</div>`);
+    m.addTo(powerLayer);
+  }
+}
+function togglePower() {
+  powerVisible = !powerVisible;
+  $("btnPower").classList.toggle("on", powerVisible);
+  drawPower();
+  showToast(powerVisible ? "⚡ ПС ON" : "⚡ ПС OFF");
+}
+function drawRings() {
+  if (ringsVisible) {
+    if (window._rings && map.hasLayer(window._rings)) return;
+    if (window._rings) {
+      try { map.removeLayer(window._rings); } catch (e) {}
+    }
+    window._rings = L.layerGroup([
+      L.circle([50.45, 30.52], { radius: 250000, color: "#3b82f6", weight: 1.5, fill: false, dashArray: "8 6", interactive: false }),
+      L.circle([50.45, 30.52], { radius: 120000, color: "#dc2626", weight: 1.5, fill: false, dashArray: "8 6", interactive: false }),
+      L.marker([50.45 + 250000 / 111320, 30.52], {
+        interactive: false,
+        icon: L.divIcon({ className: "", html: '<div style="color:#93c5fd;font-size:11px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px #000">250 км</div>', iconSize: [50, 14], iconAnchor: [25, 7] })
+      }),
+      L.marker([50.45 + 120000 / 111320, 30.52], {
+        interactive: false,
+        icon: L.divIcon({ className: "", html: '<div style="color:#fca5a5;font-size:11px;font-weight:800;white-space:nowrap;text-shadow:0 1px 2px #000">120 км</div>', iconSize: [50, 14], iconAnchor: [25, 7] })
+      })
+    ]);
+    window._rings.addTo(map);
+  } else {
+    if (window._rings) {
+      try { map.removeLayer(window._rings); } catch (e) {}
+      window._rings = null;
+    }
+  }
+}
+
+/* ============ STRATEGIC AVIATION ============ */
+let stratAviaOn = false;
+let _lastStratKey = "";
+let _lastStratAt = 0;
+const STRAT_RE = /(?:стратег\w*\s*авіац|стратегическ\w*\s*авиац|ту-?\s*95|ту-?\s*160|ту-?\s*22|ракетоносец|ракетоносі|бомбардиров|бомбардувальник|взл[её]т\w*\s*(?:с\s+)?(?:энгел|олен|украинк|шагол|дьягил|морок|райвер)|зліт\w*\s*(?:з\s+)?(?:енгел|олен)|airborne\s*alert|в\s+повітрі\s+стратег)/i;
+const STRAT_NEG = /(?:немає?\s+зліт|нема\s+активн|без\s+зліт|відбій|отбой|посадк|сели\s+на\s+аеродром)/i;
+
+function checkStrategicAviation(text, ch) {
+  if (!stratAviaOn || !text) return;
+  if (!STRAT_RE.test(text) || STRAT_NEG.test(text)) return;
+  const k = norm(text).slice(0, 90);
+  if (k === _lastStratKey && Date.now() - _lastStratAt < 4 * 60 * 1000) return;
+  _lastStratKey = k;
+  _lastStratAt = Date.now();
+  showTopAlert({
+    kind: "ballistic",
+    icon: "✈️",
+    title: "СТРАТЕГІЧНА АВІАЦІЯ",
+    place: "Можливий зліт / активність",
+    meta: (normalizeChannel(ch) || "") + " · стежте за пусками КР",
+    key: "strat|" + k
+  });
+  playBell();
+}
+
+/* ============ 20. NET ============ */
+async function fetchMessages() {
+  try {
+    const r = await fetch(CFG.API_MESSAGES);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    const messages = d.messages || d || [];
+    for (const m of messages) {
+      const text = m.text || m.message || "";
+      const ch = m.channel || "unknown";
+      if (!text) continue;
+      try { processMessage(text, ch); } catch (e) { console.error(e); }
+      try { processImpact(text, ch); } catch (e) {}
+      try { checkStrategicAviation(text, ch); } catch (e) {}
+    }
+    const now = Date.now();
+    for (const [key, chain] of [...State.trails]) {
+      if (now - chain.lastSeen > CFG.STALE_MS) {
+        if (chain.marker) msgLayer.removeLayer(chain.marker);
+        State.trails.delete(key);
+      }
+    }
+    for (const [key, o] of [...State.msgMarkers]) {
+      if (o.isStatic && now - o.lastSeen > CFG.STALE_MS) {
+        if (o.marker) msgLayer.removeLayer(o.marker);
+        State.msgMarkers.delete(key);
+      }
+    }
+    for (const [key, r] of [...State.impactReports]) {
+      if (now - r.lastSeen > 30*60*1000) {
+        if (r.marker) impactLayer.removeLayer(r.marker);
+        State.impactReports.delete(key);
+      }
+    }
+    updateBottomCard();
+    $("statusDot").className = "status-dot";
+    $("statusText").textContent = "ONLINE";
+  } catch (e) {
+    $("statusDot").className = "status-dot err";
+    $("statusText").textContent = "ОФЛАЙН";
+    console.error("fetch:", e.message);
+  }
+}
+async function fetchThreats() {
+  try {
+    const r = await fetch(CFG.API_THREATS);
+    if (!r.ok) return;
+    const d = await r.json();
+    syncThreats(d.threats || d || []);
+  } catch (e) {}
+}
+async function fetchAlerts() {
+  try {
+    const r = await fetch(CFG.API_ALERTS);
+    if (!r.ok) return;
+    const d = await r.json();
+    alertLayer.clearLayers();
+    const all = [...(d.raions||[]), ...(d.oblasts||[]), ...(d.regions||[])];
+    for (const a of all) {
+      let latlngs = null;
+      try {
+        if (a.geometry?.type === "Polygon") latlngs = a.geometry.coordinates.map(ring => ring.map(c => [c[1], c[0]]));
+        else if (a.coords) latlngs = a.coords.map(c => [c[1], c[0]]);
+        else if (a.polygon) latlngs = a.polygon.map(c => [c[1], c[0]]);
+      } catch (e) { continue; }
+      if (!latlngs) continue;
+      const name = String(a.name||"") + " " + String(a.key||"");
+      const color = /київськ|киевск/.test(name.toLowerCase()) ? "#dc2626" : "#ea580c";
+      try { L.polygon(latlngs, { color, weight: 1.5, opacity: .8, fillColor: color, fillOpacity: .12 }).addTo(alertLayer); } catch (e) {}
+    }
+  } catch (e) {}
+}
+
+/* ============ 21. UI ============ */
+function initUI() {
+  $("btnRefresh").addEventListener("click", () => { unlockAudio(); fetchMessages(); fetchThreats(); fetchAlerts(); showToast("Оновлення…"); });
+  $("btnClear").addEventListener("click", () => {
+    threatLayer.clearLayers(); msgLayer.clearLayers(); impactLayer.clearLayers(); coneLayer.clearLayers(); if (trailLayer) trailLayer.clearLayers();
+    State.tracks.clear(); State.trails.clear(); State.msgMarkers.clear(); State.impactReports.clear();
+    State.lastActive = null;
+    updateBottomCard();
+    showToast("Очищено");
+  });
+  $("btnQuickStatus").addEventListener("click", () => {
+    let nearest = "—", nearestD = Infinity, dropping = 0, rejectedTotal = 0;
+    for (const c of State.trails.values()) {
+      if (!c.filter || !c.filter.initialized) continue;
+      if (c._altDropping) dropping++;
+      rejectedTotal += c.filter.rejectedCount;
+      const pos = c.filter.pos();
+      const d = distToKyiv(pos.lat, pos.lon);
+      if (d < nearestD) {
+        nearestD = d;
+        nearest = `#${c._trackId} · ${Math.round(d)} км`;
+      }
+    }
+    for (const t of State.tracks.values()) {
+      if (!t.filter || !t.filter.initialized) continue;
+      rejectedTotal += t.filter.rejectedCount;
+      const pos = t.filter.pos();
+      const d = distToKyiv(pos.lat, pos.lon);
+      if (d < nearestD) {
+        nearestD = d;
+        nearest = `API #${t.threat._trackId || t.id} · ${Math.round(d)} км`;
+      }
+    }
+    const lines = [
+      `📊 Треки: ${State.trails.size}`,
+      `Загрози API: ${State.tracks.size}`,
+      `Прильоти: ${State.impactReports.size}`,
+      `Зниження: ${dropping}`,
+      `Відкинуто: ${rejectedTotal}`,
+      `Найближча: ${nearest}`,
+      stratAviaOn ? "✈️ Стратег.авіація: ON" : "✈️ Стратег.авіація: OFF"
+    ];
+    showToast(lines.join(" · "), 4500);
+  });
+  $("btnScope").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation(); unlockAudio();
+    const isUA = $("btnScope").textContent === "🇺🇦";
+    $("btnScope").textContent = isUA ? "🌍" : "🇺🇦";
+    map.setView(isUA ? [50.45, 30.52] : [48.5, 31.0], isUA ? 6 : 6);
+    showToast(isUA ? "🎯 Київ + 250 км" : "🇺🇦 Вся Україна");
+  });
+  $("topAlertClose").addEventListener("click", hideTopAlert);
+  $("btnLang").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();
+    const b = $("btnLang");
+    b.textContent = b.textContent === "UA" ? "EN" : "UA";
+  });
+  (function soundBtn() {
+    const b = $("soundToggle");
+    function update() { b.textContent = CFG.SOUND_ENABLED ? "🔔" : "🔕"; b.className = "sound-btn " + (CFG.SOUND_ENABLED ? "on" : "muted"); }
+    update();
+    b.addEventListener("click", e => {
+      e.preventDefault(); e.stopPropagation(); unlockAudio();
+      CFG.SOUND_ENABLED = !CFG.SOUND_ENABLED;
+      update();
+      showToast(CFG.SOUND_ENABLED ? "🔔 увімк" : "🔕 вимк");
+    });
+  })();
+  $("sirenBtn").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation(); unlockAudio();
+    playBell(); playBell();
+    showToast("🚨 Тест сирени");
+  });
+  $("btnRingsToggle").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();
+    ringsVisible = !ringsVisible;
+    $("btnRingsToggle").classList.toggle("on", ringsVisible);
+    drawRings();
+    showToast(ringsVisible ? "🎯 Кільця ON" : "🎯 Кільця OFF");
+  });
+  (function mapBtn() {
+    const b = $("btnMapToggle");
+    const modes = ["sat", "osm", "omt"];
+    let idx = 0;
+    function apply() {
+      if (map.hasLayer(baseSat)) map.removeLayer(baseSat);
+      if (map.hasLayer(osmLayer)) map.removeLayer(osmLayer);
+      if (map.hasLayer(omtLayer)) map.removeLayer(omtLayer);
+      if (modes[idx] === "sat") baseSat.addTo(map);
+      else if (modes[idx] === "osm") osmLayer.addTo(map);
+      else omtLayer.addTo(map);
+      b.textContent = { sat:"🛰", osm:"🗺", omt:"🌍" }[modes[idx]];
+    }
+    apply();
+    b.addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); idx = (idx+1)%3; apply(); });
+  })();
+  $("btnSettlements").addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); toggleSettlements(); });
+  $("btnInfra").addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); toggleInfra(); });
+  $("btnPower").addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); togglePower(); });
+  $("btnStratAvia").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation(); unlockAudio();
+    stratAviaOn = !stratAviaOn;
+    $("btnStratAvia").classList.toggle("on", stratAviaOn);
+    showToast(stratAviaOn ? "✈️ Стратегічна авіація ON — сповіщення увімкнено" : "✈️ Стратегічна авіація OFF");
+  });
+  (function geoBtn() {
+    const b = $("btnGeo");
+    let watchId = null, marker = null;
+    function onPos(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      if (!marker) {
+        marker = L.marker([lat, lon], { icon: L.divIcon({ className:"", html:'<div class="user-loc-marker"><div class="user-loc-dot"></div></div>', iconSize:[22,22], iconAnchor:[11,11] }), zIndexOffset: 3000 }).addTo(map);
+      } else marker.setLatLng([lat, lon]);
+    }
+    b.addEventListener("click", e => {
+      e.preventDefault(); e.stopPropagation(); unlockAudio();
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId); watchId = null;
+        if (marker) { map.removeLayer(marker); marker = null; }
+        b.classList.remove("on"); showToast("🧭 Вимкнено");
+      } else {
+        watchId = navigator.geolocation.watchPosition(onPos, () => {}, { enableHighAccuracy: true });
+        b.classList.add("on"); showToast("🧭 Увімкнено");
+      }
+    });
+  })();
+  $("btnVisual").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();
+    const b = $("btnVisual");
+    b.classList.toggle("on");
+    const showCard = b.classList.contains("on");
+    document.body.classList.toggle("card-on", showCard);
+    $("bottomCard").classList.toggle("show", showCard);
+    if (showCard) updateBottomCard();
+    showToast(showCard ? "👁 Панель ON" : "👁 Панель OFF");
+  });
+  $("btnFullscreen").addEventListener("click", e => {
+    e.preventDefault(); e.stopPropagation();
+    if (document.fullscreenElement) document.exitFullscreen();
+    else document.documentElement.requestFullscreen?.().catch(()=>{});
+  });
+  $("btnMarkers").addEventListener("click", e => { e.preventDefault(); e.stopPropagation(); showToast("📍 Клікніть на карту, щоб додати мітку"); });
+  document.addEventListener("click", e => {
+    const btn = e.target.closest(".popup-remove-btn");
+    if (!btn) return;
+    e.preventDefault(); e.stopPropagation();
+    const kind = btn.getAttribute("data-remove"), key = btn.getAttribute("data-key");
+    if (!kind || !key) return;
+    if (kind === "track") {
+      const tr = State.tracks.get(key);
+      if (tr && tr.marker) threatLayer.removeLayer(tr.marker);
+      State.tracks.delete(key);
+    } else if (kind === "msg") {
+      const chain = State.trails.get(key);
+      if (chain && chain.marker) msgLayer.removeLayer(chain.marker);
+      State.trails.delete(key);
+    } else if (kind === "impact") {
+      const r = State.impactReports.get(key);
+      if (r && r.marker) impactLayer.removeLayer(r.marker);
+      State.impactReports.delete(key);
+    }
+    map.closePopup();
+    updateBottomCard();
+  });
+}
+function initSearch() {
+  const input = $("searchInput"), btn = $("searchBtn"), results = $("searchResults");
+  btn.addEventListener("click", async () => {
+    const q = input.value.trim();
+    if (q.length < 2) return;
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=8&countrycodes=ua&accept-language=uk`;
+      const data = await (await fetch(url)).json();
+      results.innerHTML = (data||[]).map((d,i) => `<div class="search-item" data-i="${i}"><div class="name">${esc(d.display_name.split(",")[0])}</div><div class="addr">${esc(d.display_name)}</div></div>`).join("");
+      results.classList.add("show");
+      results.querySelectorAll(".search-item").forEach(el => el.addEventListener("click", () => {
+        const it = data[+el.dataset.i];
+        if (it) { map.setView([+it.lat, +it.lon], 14); results.classList.remove("show"); }
+      }));
+    } catch (e) { showToast("Помилка пошуку"); }
+  });
+}
+
+/* ============ 22. INIT ============ */
+async function init() {
+  try {
+    initMap();
+    initUI();
+    initSearch();
+    updateBottomCard();
+    await fetchMessages();
+    await fetchThreats();
+    await fetchAlerts();
+    setInterval(fetchMessages, CFG.POLL_MS);
+    setInterval(fetchThreats, 15000);
+    setInterval(fetchAlerts, 60000);
+    setInterval(tickVisuals, MOVE_TICK_MS);
+    setTimeout(unlockAudio, 500);
+    console.log("[radar] ready v19.0 — Alpha-Beta filter + outlier rejection");
+  } catch (e) {
+    Log.err("init: " + (e.message || e));
+  }
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+else init();
+</script>
+</body>
+</html>
